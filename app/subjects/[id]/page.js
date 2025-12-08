@@ -520,6 +520,92 @@ export default function SubjectPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* AI Generate Dialog */}
+      <Dialog open={isAIGenerateOpen} onOpenChange={setIsAIGenerateOpen}>
+        <DialogContent className="bg-card border-border max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
+              <Sparkles className="h-6 w-6 text-primary" />
+              AI Curriculum Generator
+            </DialogTitle>
+            <DialogDescription>
+              Let AI create a complete learning path with topics and dependencies for your subject.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="seed-text">Subject Context & Goals</Label>
+              <Textarea
+                id="seed-text"
+                placeholder="e.g., I want to learn Python programming from basics to building web applications. Include data structures, OOP, and Flask framework."
+                value={aiConfig.seedText}
+                onChange={(e) => setAiConfig({ ...aiConfig, seedText: e.target.value })}
+                className="bg-background border-border min-h-[120px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                Describe what you want to learn. The more specific, the better!
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="ai-difficulty">Target Difficulty</Label>
+                <Select
+                  value={aiConfig.difficulty.toString()}
+                  onValueChange={(value) => setAiConfig({ ...aiConfig, difficulty: parseInt(value) })}
+                >
+                  <SelectTrigger className="bg-background border-border">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 - Beginner</SelectItem>
+                    <SelectItem value="2">2 - Easy</SelectItem>
+                    <SelectItem value="3">3 - Intermediate</SelectItem>
+                    <SelectItem value="4">4 - Advanced</SelectItem>
+                    <SelectItem value="5">5 - Expert</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="total-minutes">Total Study Time (minutes)</Label>
+                <Input
+                  id="total-minutes"
+                  type="number"
+                  min="60"
+                  max="1000"
+                  step="30"
+                  value={aiConfig.totalMinutes}
+                  onChange={(e) => setAiConfig({ ...aiConfig, totalMinutes: parseInt(e.target.value) || 300 })}
+                  className="bg-background border-border"
+                />
+              </div>
+            </div>
+            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">
+                💡 AI will generate 5-10 topics with dependencies based on your input. 
+                Topics will be automatically organized in a learning sequence with prerequisites.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAIGenerateOpen(false)} disabled={aiGenerating}>
+              Cancel
+            </Button>
+            <Button onClick={handleAIGenerate} disabled={aiGenerating} className="neon-glow">
+              {aiGenerating ? (
+                <>
+                  <span className="animate-pulse">Generating...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Generate Curriculum
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
