@@ -277,10 +277,16 @@ export default function SubjectPage() {
                 <p className="text-sm text-muted-foreground">{topics.length} topics</p>
               </div>
             </div>
-            <Button onClick={() => setIsCreateTopicOpen(true)} className="neon-glow">
-              <Plus className="mr-2 h-5 w-5" />
-              Add Topic
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={() => setIsAIGenerateOpen(true)} variant="outline" className="border-primary/50 hover:border-primary">
+                <Sparkles className="mr-2 h-5 w-5 text-primary" />
+                AI Generate
+              </Button>
+              <Button onClick={() => setIsCreateTopicOpen(true)} className="neon-glow">
+                <Plus className="mr-2 h-5 w-5" />
+                Add Topic
+              </Button>
+            </div>
           </div>
         </div>
       </div>
