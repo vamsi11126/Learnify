@@ -374,36 +374,70 @@ export default function SubjectPage() {
                 </CardContent>
               </Card>
             ) : (
-              topics.map((topic) => (
-                <Card key={topic.id} className="bg-card border-border hover:border-primary/30 transition-all">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <CardTitle className="text-xl mb-2" style={{ fontFamily: 'Montserrat' }}>{topic.title}</CardTitle>
-                        <CardDescription className="line-clamp-2">{topic.description || 'No description'}</CardDescription>
+              topics.map((topic) => {
+                const isDue = topic.next_review_at && isDueForReview(topic.next_review_at)
+                return (
+                  <Card key={topic.id} className="bg-card border-border hover:border-primary/30 transition-all">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-xl mb-2" style={{ fontFamily: 'Montserrat' }}>{topic.title}</CardTitle>
+                          <CardDescription className="line-clamp-2">{topic.description || 'No description'}</CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(topic.status)}`}>
+                            {topic.status}
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteTopic(topic.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(topic.status)}`}>
-                          {topic.status}
-                        </span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteTopic(topic.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>⏱ {topic.estimated_minutes} min</span>
+                          <span>⭐ Difficulty: {topic.difficulty}/5</span>
+                          {topic.next_review_at && (
+                            <span className={isDue ? 'text-destructive font-medium' : ''}>
+                              {isDue ? '🔴 Due now' : `Next: ${new Date(topic.next_review_at).toLocaleDateString()}`}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          {(topic.status === 'available' || topic.status === 'learning') && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => router.push(`/learn/${topic.id}`)}
+                              className="bg-accent hover:bg-accent/80"
+                            >
+                              <Play className="mr-1 h-4 w-4" />
+                              Learn
+                            </Button>
+                          )}
+                          {(topic.status === 'reviewing' || topic.status === 'mastered') && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => router.push(`/review/${topic.id}`)}
+                              variant={isDue ? "default" : "outline"}
+                              className={isDue ? "neon-glow" : ""}
+                            >
+                              <RotateCw className="mr-1 h-4 w-4" />
+                              Review
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>⏱ {topic.estimated_minutes} min</span>
-                      <span>⭐ Difficulty: {topic.difficulty}/5</span>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                )
+              })
+            )}
             )}
           </TabsContent>
         </Tabs>
