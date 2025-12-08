@@ -194,6 +194,44 @@ export default function SubjectPage() {
     }
   }
 
+  const handleAIGenerate = async () => {
+    if (!aiConfig.seedText.trim()) {
+      toast.error('Please enter a description or context')
+      return
+    }
+
+    setAiGenerating(true)
+
+    try {
+      const response = await fetch('/api/generate-graph', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subjectId,
+          seedText: aiConfig.seedText,
+          difficulty: aiConfig.difficulty,
+          totalMinutes: aiConfig.totalMinutes
+        })
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'AI generation failed')
+      }
+
+      toast.success(`Created ${result.topicsCreated} topics with ${result.dependenciesCreated} dependencies!`)
+      setIsAIGenerateOpen(false)
+      setAiConfig({ seedText: '', difficulty: 3, totalMinutes: 300 })
+      loadSubjectData()
+    } catch (error) {
+      console.error('AI generation error:', error)
+      toast.error(error.message || 'Failed to generate curriculum')
+    } finally {
+      setAiGenerating(false)
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'locked': return 'text-muted-foreground'
