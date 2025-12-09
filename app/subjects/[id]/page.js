@@ -1,7 +1,7 @@
 'use client'
-
-import { useEffect, useState } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+// ... imports
+import { useEffect, useState, useRef } from 'react' // Ensure React hooks are imported
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,23 +11,41 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, ArrowLeft, Network, BookOpen, Settings, Trash2, Sparkles, Play, RotateCw } from 'lucide-react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Plus, ArrowLeft, Network, BookOpen, Settings, Trash2, Sparkles, Play, RotateCw, Home, Pencil, Share2, Copy, Check, Globe, Lock } from 'lucide-react'
 import { toast } from 'sonner'
 import GraphVisualizer from '@/components/GraphVisualizer'
+import RecommendationWidget from '@/components/RecommendationWidget'
+import WeeklyStats from '@/components/WeeklyStats'
+import ThreeDLoadingBar from '@/components/ThreeDLoadingBar'
 import { isDueForReview } from '@/lib/sm2'
+import { createDependency, deleteDependency, deleteTopic, updateUnlockedTopics, updateSubjectVisibility } from '@/lib/actions'
+import { getWeakTopics, getStudyTimeByWeek } from '@/lib/analytics'
+import WeakTopicsWidget from '@/components/WeakTopicsWidget'
+import { Switch } from '@/components/ui/switch'
+import { ThemeToggle } from '@/components/sub-components/theme-toggle'
 
 export default function SubjectPage() {
   const router = useRouter()
+  // ... rest of component
   const params = useParams()
+  const searchParams = useSearchParams()
+  const urlTab = searchParams.get('tab')
+  const [currentTab, setCurrentTab] = useState(urlTab || 'overview') 
   const subjectId = params.id
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
   const [subject, setSubject] = useState(null)
   const [topics, setTopics] = useState([])
   const [dependencies, setDependencies] = useState([])
+
+  const [studyLogs, setStudyLogs] = useState([]) // Keep for legacy or specific log lists if needed
+  const [analytics, setAnalytics] = useState({ weakTopics: [], weeklyData: [], totalMinutes: 0 })
+  
+  // ... (rest of state definitions)
   const [isCreateTopicOpen, setIsCreateTopicOpen] = useState(false)
   const [isAIGenerateOpen, setIsAIGenerateOpen] = useState(false)
-  const [aiGenerating, setAiGenerating] = useState(false)
+  const [aiGenerating, setAiGenerating] = useState(false) // Added loading state for generation
   const [aiConfig, setAiConfig] = useState({
     seedText: '',
     difficulty: 3,
@@ -40,7 +58,57 @@ export default function SubjectPage() {
     estimated_minutes: 30,
     difficulty: 3
   })
+  const [isLinkTopicsOpen, setIsLinkTopicsOpen] = useState(false)
+  const [linkConfig, setLinkConfig] = useState({
+    parentTopicId: '',
+    childTopicId: ''
+  })
+  const [dependencyToDelete, setDependencyToDelete] = useState(null)
+  const [topicToDelete, setTopicToDelete] = useState(null)
+  const [selectedTopic, setSelectedTopic] = useState(null)
+  const [isTopicDetailsOpen, setIsTopicDetailsOpen] = useState(false)
+  /* ... existing state ... */
+  const [topicEditForm, setTopicEditForm] = useState({ title: '', description: '', content: '' })
+  const [isEditSubjectOpen, setIsEditSubjectOpen] = useState(false)
+  const [editMode, setEditMode] = useState('all') // 'all' | 'notes'
+  const [updatedSubject, setUpdatedSubject] = useState({ title: '', description: '' })
+  
+  const [isCopied, setIsCopied] = useState(false)
+
+  /* ... */
+
+  /* Header Pencil Button */
+  /* This component part is around line 494 in original file, need to be careful with replace range */
+  
+  /* Applying changes to Dialog primarily and the click handlers */
+
+/* STARTING WITH STATE DEFINITION */
+
   const supabase = createClient()
+
+  const handleUpdateSubject = async () => {
+    if (!updatedSubject.title.trim()) {
+      toast.error('Please enter a subject title')
+      return
+    }
+
+    const { error } = await supabase
+      .from('subjects')
+      .update({
+        title: updatedSubject.title,
+        description: updatedSubject.description
+      })
+      .eq('id', subjectId)
+
+    if (error) {
+      console.error('Error updating subject:', error)
+      toast.error('Failed to update subject')
+    } else {
+      toast.success('Subject updated successfully!')
+      setSubject({ ...subject, title: updatedSubject.title, description: updatedSubject.description })
+      setIsEditSubjectOpen(false)
+    }
+  }
 
   useEffect(() => {
     const checkUser = async () => {
@@ -50,7 +118,11 @@ export default function SubjectPage() {
         return
       }
       setUser(user)
-      loadSubjectData()
+      
+      // Run unlocking engine to ensure correctness before loading
+      await updateUnlockedTopics(subjectId)
+      
+      loadSubjectData(user.id)
       setLoading(false)
     }
     checkUser()
@@ -87,15 +159,81 @@ export default function SubjectPage() {
         }
       )
       .subscribe()
+      
+    // Subscribe to logs for realtime stats updates
+    const logsChannel = supabase
+      .channel('logs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'study_logs',
+          filter: `subject_id=eq.${subjectId}`
+        },
+        () => {
+          loadAnalytics()
+        }
+      )
+      .subscribe()
 
     return () => {
       supabase.removeChannel(topicsChannel)
       supabase.removeChannel(depsChannel)
+      supabase.removeChannel(logsChannel)
     }
   }, [subjectId])
 
-  const loadSubjectData = async () => {
-    await Promise.all([loadSubject(), loadTopics(), loadDependencies()])
+  // Sync state with URL if it changes
+  useEffect(() => {
+    if (urlTab) {
+      setCurrentTab(urlTab)
+    }
+  }, [urlTab])
+
+  // Restore from localStorage if no URL param
+  useEffect(() => {
+    if (!urlTab) {
+      const savedTab = localStorage.getItem(`subject_tab_${subjectId}`)
+      if (savedTab) {
+        // Update state and URL
+        setCurrentTab(savedTab)
+        router.replace(`/subjects/${subjectId}?tab=${savedTab}`, { scroll: false })
+      }
+    }
+  }, [subjectId, urlTab, router])
+
+
+  /* ... existing state ... */
+  const userRef = useRef(null)
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
+
+  const loadSubjectData = async (userId) => {
+    await Promise.all([
+        loadSubject(), 
+        loadTopics(), 
+        loadDependencies(),
+        loadAnalytics(userId)
+    ])
+  }
+  
+  const loadAnalytics = async (userId) => {
+    const targetUserId = userId || userRef.current?.id
+    if (!targetUserId) return
+
+    const [weak, stats] = await Promise.all([
+        getWeakTopics(subjectId),
+        getStudyTimeByWeek(targetUserId, subjectId)
+    ])
+
+    setAnalytics({
+        weakTopics: weak,
+        weeklyData: stats.weekData,
+        totalMinutes: stats.totalMinutes
+    })
   }
 
   const loadSubject = async () => {
@@ -114,9 +252,10 @@ export default function SubjectPage() {
   }
 
   const loadTopics = async () => {
+    // Optimization: Select only necessary fields for the list view and recommendations
     const { data, error } = await supabase
       .from('topics')
-      .select('*')
+      .select('id, title, description, status, estimated_minutes, difficulty, next_review_at, subject_id, created_at, repetition_count, interval_days, difficulty_factor')
       .eq('subject_id', subjectId)
       .order('created_at', { ascending: true })
 
@@ -146,8 +285,8 @@ export default function SubjectPage() {
       return
     }
 
-    // First topic is always available
-    const status = topics.length === 0 ? 'available' : 'locked'
+    // Manual topics are always available by default
+    const status = 'available'
 
     const { data, error } = await supabase
       .from('topics')
@@ -179,19 +318,71 @@ export default function SubjectPage() {
     }
   }
 
-  const handleDeleteTopic = async (topicId) => {
-    const { error } = await supabase
-      .from('topics')
-      .delete()
-      .eq('id', topicId)
+  const handleDeleteTopic = (topic) => {
+    setTopicToDelete(topic)
+  }
 
-    if (error) {
+  const confirmDeleteTopic = async () => {
+    if (!topicToDelete) return
+
+    const { success, error } = await deleteTopic(topicToDelete.id)
+
+    if (!success) {
       console.error('Error deleting topic:', error)
       toast.error('Failed to delete topic')
     } else {
       toast.success('Topic deleted successfully')
       loadTopics()
+      setIsTopicDetailsOpen(false) // Close details if open
+      setTopicToDelete(null)
     }
+  }
+
+  const handleUpdateTopic = async () => {
+    if (!topicEditForm.title.trim()) {
+      toast.error('Topic title cannot be empty')
+      return
+    }
+
+    const { error } = await supabase
+      .from('topics')
+      .update({
+        title: topicEditForm.title,
+        description: topicEditForm.description
+      })
+      .eq('id', selectedTopic.id)
+
+    if (error) {
+      console.error('Error updating topic:', error)
+      toast.error('Failed to update topic')
+    } else {
+      toast.success('Topic updated successfully')
+      loadTopics()
+      setIsTopicDetailsOpen(false)
+    }
+  }
+
+
+
+  const openTopicDetails = async (topic) => {
+    setSelectedTopic(topic)
+    setIsTopicDetailsOpen(true)
+    
+    // Initial state
+    setTopicEditForm({
+      title: topic.title,
+      description: topic.description || ''
+    })
+  }
+
+  const handleNodeClick = (node) => {
+    // node.data contains the full topic object passed from GraphVisualizer
+    openTopicDetails(node.data)
+  }
+
+  const handlePaneContextMenu = (event) => {
+    event.preventDefault()
+    setIsCreateTopicOpen(true)
   }
 
   const handleAIGenerate = async () => {
@@ -232,142 +423,399 @@ export default function SubjectPage() {
     }
   }
 
+
+
+  const handleLinkTopics = async () => {
+    if (!linkConfig.parentTopicId || !linkConfig.childTopicId) {
+      toast.error('Please select both topics')
+      return
+    }
+
+    if (linkConfig.parentTopicId === linkConfig.childTopicId) {
+      toast.error('Cannot link a topic to itself')
+      return
+    }
+
+    const { success, error } = await createDependency(subjectId, linkConfig.childTopicId, linkConfig.parentTopicId)
+
+    if (success) {
+      toast.success('Topics linked successfully!')
+      setIsLinkTopicsOpen(false)
+      setLinkConfig({ parentTopicId: '', childTopicId: '' })
+      loadSubjectData() // Reload everything to update graph and statuses
+    } else {
+      toast.error(error || 'Failed to link topics')
+    }
+  }
+
+  const handleDeleteDependency = (dependencyId) => {
+    setDependencyToDelete(dependencyId)
+  }
+
+  const confirmDeleteDependency = async () => {
+    if (!dependencyToDelete) return
+
+    const { success, error } = await deleteDependency(subjectId, dependencyToDelete)
+
+    if (success) {
+      toast.success('Connection removed')
+      loadSubjectData()
+      setDependencyToDelete(null)
+    } else {
+      toast.error(error || 'Failed to remove connection')
+    }
+  }
+
+  const handleGraphConnect = async (params) => {
+    // ReactFlow source = "From" node, target = "To" node.
+    // In our dependency logic: Arrow points from Prerequisite -> Next Topic.
+    // So Source is Prereq (depends_on_topic_id), Target is Topic (topic_id).
+    // createDependency(subjectId, topicId, dependsOnTopicId)
+    // -> createDependency(subjectId, params.target, params.source)
+    
+    // Prevent self-connection (handled by createDependency but being defensive is good)
+    if (params.source === params.target) return
+
+    const { success, error } = await createDependency(subjectId, params.target, params.source)
+
+    if (success) {
+      toast.success('Topics linked!')
+      loadSubjectData()
+    } else {
+      toast.error(error || 'Failed to link topics')
+    }
+  }
+
   const getStatusColor = (status) => {
     switch (status) {
-      case 'locked': return 'text-muted-foreground'
-      case 'available': return 'text-accent'
-      case 'learning': return 'text-chart-4'
-      case 'reviewing': return 'text-chart-3'
-      case 'mastered': return 'text-primary'
+      case 'locked': return 'text-muted-foreground' 
+      case 'available': return 'text-primary' 
+      case 'learning': return 'text-sky-500' 
+      case 'reviewing': return 'text-orange-500' 
+      case 'mastered': return 'text-emerald-500' 
       default: return 'text-muted-foreground'
     }
   }
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'locked': return 'bg-muted/20 text-muted-foreground'
-      case 'available': return 'bg-accent/20 text-accent'
-      case 'learning': return 'bg-chart-4/20 text-chart-4'
-      case 'reviewing': return 'bg-chart-3/20 text-chart-3'
-      case 'mastered': return 'bg-primary/20 text-primary'
+      case 'locked': return 'bg-muted/10 text-muted-foreground border-border/50'
+      case 'available': return 'bg-primary/10 text-primary border-primary/20'
+      case 'learning': return 'bg-sky-500/10 text-sky-500 border-sky-500/20'
+      case 'reviewing': return 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+      case 'mastered': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
       default: return 'bg-muted/20 text-muted-foreground'
     }
+  }
+
+  const handleTabChange = (value) => {
+    setCurrentTab(value) // Optimistic update
+    localStorage.setItem(`subject_tab_${subjectId}`, value)
+    router.push(`/subjects/${subjectId}?tab=${value}`, { scroll: false })
+  }
+
+  const handleTogglePublic = async (checked) => {
+    // Optimistic update
+    const previousState = subject.is_public
+    setSubject({ ...subject, is_public: checked })
+
+    const { success, error } = await updateSubjectVisibility(subjectId, checked)
+    
+    if (success) {
+      toast.success(checked ? 'Subject is now public' : 'Subject is now private')
+    } else {
+      setSubject({ ...subject, is_public: previousState }) // Revert
+      toast.error(error || 'Failed to update visibility')
+    }
+  }
+
+  const handleCopyLink = () => {
+    // Construct the public link. Assuming protocol and host from window location or env.
+    const url = `${window.location.origin}/u/${encodeURIComponent(user?.email?.split('@')[0] || 'user')}/subjects/${subjectId}`
+    navigator.clipboard.writeText(url)
+    setIsCopied(true)
+    toast.success('Public link copied to clipboard!')
+    setTimeout(() => setIsCopied(false), 2000)
   }
 
   if (loading || !subject) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-xl text-muted-foreground">Loading...</div>
+        <div className="animate-pulse flex items-center gap-2 text-muted-foreground">
+          <BookOpen className="h-6 w-6 text-primary" />
+          <span className="text-lg font-medium">Loading Subject...</span>
+        </div>
+      </div>
+    )
+  }
+
+  // AI Generation Loading Overlay
+  if (aiGenerating) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 selection:bg-primary/20 selection:text-primary overflow-hidden relative z-50">
+        {/* Background Ambient Glow */}
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+        </div>
+
+        <div className="z-10 flex flex-col items-center animate-in fade-in zoom-in duration-500">
+          <div className="relative mb-8">
+            <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
+            <Sparkles className="h-16 w-16 text-primary animate-spin-slow relative z-10" />
+          </div>
+          <h2 className="text-3xl font-bold tracking-tight mb-3 text-center">Synthesizing Curriculum...</h2>
+          <p className="text-muted-foreground animate-pulse text-lg text-center max-w-md">
+            Our agents are analyzing the topic, structuring dependencies, and generating a personalized learning path.
+          </p>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="h-screen flex flex-col overflow-hidden bg-background selection:bg-primary/20 selection:text-primary">
       {/* Top Bar */}
-      <div className="border-b border-border bg-card/30 backdrop-blur-sm sticky top-0 z-40">
+      <div className="border-b border-white/5 bg-background/80 backdrop-blur-md z-40 shrink-0">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard')}>
+            <div className="flex items-center gap-4 min-w-0">
+              <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard')} className="hover:bg-white/5 shrink-0">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div>
-                <h1 className="text-2xl font-bold" style={{ fontFamily: 'Montserrat' }}>{subject.title}</h1>
-                <p className="text-sm text-muted-foreground">{topics.length} topics</p>
+              <Button variant="ghost" size="icon" onClick={() => router.push('/')} className="hover:bg-white/5 shrink-0 hidden sm:flex">
+                <Home className="h-5 w-5" />
+              </Button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl md:text-2xl font-bold tracking-tight truncate">{subject.title}</h1>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6 text-muted-foreground hover:text-white shrink-0"
+                    onClick={() => {
+                      setUpdatedSubject({ title: subject.title, description: subject.description || '' })
+                      setEditMode('all')
+                      setIsEditSubjectOpen(true)
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground truncate">{topics.length} topics</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={() => setIsAIGenerateOpen(true)} variant="outline" className="border-primary/50 hover:border-primary">
-                <Sparkles className="mr-2 h-5 w-5 text-primary" />
-                AI Generate
+            <div className="flex gap-2 items-center shrink-0 ml-2">
+              {/* Public Toggle & Share */}
+              {subject && (
+                <div className="flex items-center gap-2 mr-0 md:mr-2 bg-white/5 rounded-full px-2 md:px-3 py-1.5 border border-white/5">
+                   {subject.is_public ? (
+                      <Globe className="h-4 w-4 text-sky-400" />
+                   ) : (
+                      <Lock className="h-4 w-4 text-zinc-400" />
+                   )}
+                   <Label htmlFor="public-mode" className="text-xs font-medium cursor-pointer hidden md:block">
+                      {subject.is_public ? 'Public' : 'Private'}
+                   </Label>
+                   <Switch 
+                      id="public-mode"
+                      checked={subject.is_public || false}
+                      onCheckedChange={handleTogglePublic}
+                      className="ml-1 scale-75 data-[state=checked]:bg-sky-500 data-[state=unchecked]:bg-zinc-600 dark:data-[state=unchecked]:bg-zinc-700"
+                   />
+                </div>
+              )}
+              
+              {subject?.is_public && (
+                <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="glass border-sky-500/20 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 mr-2 px-2 md:px-3"
+                    onClick={handleCopyLink}
+                >
+                    {isCopied ? <Check className="mr-0 md:mr-2 h-4 w-4" /> : <Share2 className="mr-0 md:mr-2 h-4 w-4" />}
+                    <span className="hidden md:inline">{isCopied ? 'Copied' : 'Share'}</span>
+                </Button>
+              )}
+
+              <Button onClick={() => setIsAIGenerateOpen(true)} variant="outline" className="glass border-primary/30 hover:bg-primary/10 hover:border-primary/50 text-primary px-2 md:px-4">
+                <Sparkles className="mr-0 md:mr-2 h-5 w-5" />
+                <span className="hidden md:inline">AI Generate</span>
               </Button>
-              <Button onClick={() => setIsCreateTopicOpen(true)} className="neon-glow">
-                <Plus className="mr-2 h-5 w-5" />
-                Add Topic
+              <Button onClick={() => setIsLinkTopicsOpen(true)} variant="outline" className="glass border-white/10 hover:bg-white/5 px-2 md:px-4">
+                <Network className="mr-0 md:mr-2 h-5 w-5" />
+                <span className="hidden md:inline">Link</span>
               </Button>
+              <Button onClick={() => setIsCreateTopicOpen(true)} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-2 md:px-4">
+                <Plus className="mr-0 md:mr-2 h-5 w-5" />
+                <span className="hidden md:inline">Add Topic</span>
+              </Button>
+              <ThemeToggle />
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-6 py-8">
-        <Tabs defaultValue="overview" className="space-y-6">
-          <TabsList className="bg-card border border-border">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="graph">Knowledge Graph</TabsTrigger>
-            <TabsTrigger value="topics">All Topics</TabsTrigger>
-          </TabsList>
+      <div className="flex-1 overflow-hidden flex flex-col">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
+          <div className="container mx-auto px-6 pt-4 shrink-0">
+            <TabsList className="bg-white/5 border border-white/5 p-1 w-full sm:w-auto">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-background/50">Overview</TabsTrigger>
+              <TabsTrigger value="graph" className="data-[state=active]:bg-background/50">Knowledge Graph</TabsTrigger>
+              <TabsTrigger value="topics" className="data-[state=active]:bg-background/50">All Topics</TabsTrigger>
+            </TabsList>
+          </div>
 
-          <TabsContent value="overview" className="space-y-6">
-            <div className="grid md:grid-cols-3 gap-4">
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-lg">Total Topics</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold" style={{ fontFamily: 'Montserrat' }}>{topics.length}</div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-lg">Available</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-accent" style={{ fontFamily: 'Montserrat' }}>
-                    {topics.filter(t => t.status === 'available').length}
-                  </div>
-                </CardContent>
-              </Card>
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle className="text-lg">Mastered</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-3xl font-bold text-primary" style={{ fontFamily: 'Montserrat' }}>
-                    {topics.filter(t => t.status === 'mastered').length}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <TabsContent value="overview" className="flex-1 overflow-y-auto p-6 container mx-auto">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+              {/* Left Column: Metrics & Stats */}
+              <div className="lg:col-span-2 space-y-6">
+                 {/* Key Metrics */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* 1. Total Topics */}
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Total</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{topics.length}</div>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* 2. Available */}
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Newly Unlocked Topics</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-foreground">
+                        {topics.filter(t => t.status === 'available').length}
+                      </div>
+                    </CardContent>
+                  </Card>
 
-            {subject.description && (
-              <Card className="bg-card border-border">
-                <CardHeader>
-                  <CardTitle>Description</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-muted-foreground">{subject.description}</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
+                  {/* 3. Learning */}
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Learning</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-sky-500">
+                        {topics.filter(t => t.status === 'learning').length}
+                      </div>
+                    </CardContent>
+                  </Card>
 
-          <TabsContent value="graph">
-            <Card className="bg-card border-border">
-              <CardContent className="p-0">
-                <div className="h-[600px]">
-                  <GraphVisualizer
-                    topics={topics}
-                    dependencies={dependencies}
-                    onNodeClick={(topicId) => {
-                      toast.info('Topic details coming soon!')
-                    }}
-                  />
+                  {/* 4. Reviewing */}
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Reviewing</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-orange-500">
+                        {topics.filter(t => t.status === 'reviewing').length}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 5. Mastered */}
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Mastered</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-emerald-500">
+                        {topics.filter(t => t.status === 'mastered').length}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* 6. Percentage */}
+                  <Card className="glass-card">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Completion</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold text-primary">
+                        {topics.length > 0 
+                          ? ((topics.filter(t => t.status === 'mastered').length / topics.length) * 100).toFixed(2)
+                          : '0.00'}%
+                      </div>
+                    </CardContent>
+                  </Card>
                 </div>
-              </CardContent>
-            </Card>
+
+
+                {/* Weak Topics Widget - Show conditionally if there are weak topics */}
+                {analytics.weakTopics.length > 0 && (
+                  <WeakTopicsWidget topics={analytics.weakTopics} />
+                )}
+
+                {/* Weekly Stats */}
+                <WeeklyStats 
+                    data={analytics.weeklyData} 
+                    totalMinutes={analytics.totalMinutes} 
+                />
+
+                {/* Description / Notes */}
+                {/* Description / Notes */}
+                {subject.description && (
+                  <Card className="glass-card group relative">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-xl">Notes & Reminders</CardTitle>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={() => {
+                            setUpdatedSubject({ title: subject.title, description: subject.description || '' })
+                            setEditMode('notes')
+                            setIsEditSubjectOpen(true)
+                          }}
+                        >
+                          <Pencil className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{subject.description}</p>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column: Recommendation Engine */}
+              <div className="lg:col-span-1 h-full">
+                <RecommendationWidget topics={topics} />
+              </div>
+            </div>
           </TabsContent>
 
-          <TabsContent value="topics" className="space-y-4">
+          <TabsContent value="graph" className="flex-1 h-full p-0 data-[state=active]:flex flex-col overflow-hidden">
+            <div className="h-full w-full bg-black/20">
+              <GraphVisualizer
+                topics={topics}
+                dependencies={dependencies}
+                onNodeClick={handleNodeClick}
+                onEdgeClick={handleDeleteDependency}
+                onConnect={handleGraphConnect}
+                onPaneContextMenu={handlePaneContextMenu}
+              />
+            </div>
+          </TabsContent>
+
+          <TabsContent value="topics" className="flex-1 overflow-y-auto p-6 space-y-4 container mx-auto">
             {topics.length === 0 ? (
-              <Card className="bg-card border-border">
-                <CardContent className="flex flex-col items-center justify-center py-12">
-                  <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
-                  <h3 className="text-xl font-bold mb-2" style={{ fontFamily: 'Montserrat' }}>No Topics Yet</h3>
-                  <p className="text-muted-foreground mb-4">Add your first topic to start learning!</p>
-                  <Button onClick={() => setIsCreateTopicOpen(true)}>
+              <Card className="glass-card border-dashed border-foreground/10">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <div className="w-16 h-16 bg-foreground/5 rounded-full flex items-center justify-center mb-6 text-muted-foreground">
+                    <BookOpen className="h-8 w-8" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">No Topics Yet</h3>
+                  <p className="text-muted-foreground mb-6 max-w-sm text-center">Start building your knowledge base by adding your first topic manually or using AI generation.</p>
+                  <Button onClick={() => setIsCreateTopicOpen(true)} variant="secondary">
                     <Plus className="mr-2 h-5 w-5" />
                     Add First Topic
                   </Button>
@@ -377,23 +825,34 @@ export default function SubjectPage() {
               topics.map((topic) => {
                 const isDue = topic.next_review_at && isDueForReview(topic.next_review_at)
                 return (
-                  <Card key={topic.id} className="bg-card border-border hover:border-primary/30 transition-all">
+                  <Card key={topic.id} className="glass-card hover:bg-foreground/5 transition-all group border-foreground/5">
                     <CardHeader>
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <CardTitle className="text-xl mb-2" style={{ fontFamily: 'Montserrat' }}>{topic.title}</CardTitle>
-                          <CardDescription className="line-clamp-2">{topic.description || 'No description'}</CardDescription>
+                          <CardTitle className="text-xl mb-2 flex items-center gap-3">
+                            {topic.title}
+                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider border ${getStatusBadge(topic.status)}`}>
+                              {topic.status}
+                            </span>
+                          </CardTitle>
+                          <CardDescription className="line-clamp-2 text-muted-foreground/80">{topic.description || 'No description'}</CardDescription>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(topic.status)}`}>
-                            {topic.status}
-                          </span>
+                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteTopic(topic.id)}
+                            onClick={() => openTopicDetails(topic)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:bg-primary/10 hover:text-primary"
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteTopic(topic)}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
                       </div>
@@ -401,11 +860,12 @@ export default function SubjectPage() {
                     <CardContent>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>⏱ {topic.estimated_minutes} min</span>
-                          <span>⭐ Difficulty: {topic.difficulty}/5</span>
+                          <span className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-foreground/50"></span> {topic.estimated_minutes} min</span>
+                          <span className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-foreground/50"></span> Difficulty: {topic.difficulty}/5</span>
                           {topic.next_review_at && (
-                            <span className={isDue ? 'text-destructive font-medium' : ''}>
-                              {isDue ? '🔴 Due now' : `Next: ${new Date(topic.next_review_at).toLocaleDateString()}`}
+                            <span className={`flex items-center gap-1.5 ${isDue ? 'text-destructive font-semibold' : ''}`}>
+                              <span className="w-1 h-1 rounded-full bg-foreground/50"></span>
+                              {isDue ? 'Due now' : `Next: ${new Date(topic.next_review_at).toLocaleDateString('en-GB')}`}
                             </span>
                           )}
                         </div>
@@ -414,7 +874,7 @@ export default function SubjectPage() {
                             <Button 
                               size="sm" 
                               onClick={() => router.push(`/learn/${topic.id}`)}
-                              className="bg-accent hover:bg-accent/80"
+                              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                             >
                               <Play className="mr-1 h-4 w-4" />
                               Learn
@@ -422,10 +882,9 @@ export default function SubjectPage() {
                           )}
                           {(topic.status === 'reviewing' || topic.status === 'mastered') && (
                             <Button 
-                              size="sm" 
                               onClick={() => router.push(`/review/${topic.id}`)}
                               variant={isDue ? "default" : "outline"}
-                              className={isDue ? "neon-glow" : ""}
+                              className={isDue ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90" : "border-foreground/10 hover:bg-foreground/5"}
                             >
                               <RotateCw className="mr-1 h-4 w-4" />
                               Review
@@ -438,16 +897,51 @@ export default function SubjectPage() {
                 )
               })
             )}
-            )}
           </TabsContent>
         </Tabs>
       </div>
 
+      {/* Edit Subject Dialog */}
+      <Dialog open={isEditSubjectOpen} onOpenChange={setIsEditSubjectOpen}>
+        <DialogContent className="bg-card border-white/10 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Subject Details</DialogTitle>
+            <DialogDescription>Update your subject title and personal notes.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-subject-title">Subject Title</Label>
+              <Input
+                id="edit-subject-title"
+                value={updatedSubject.title}
+                onChange={(e) => setUpdatedSubject({ ...updatedSubject, title: e.target.value })}
+                className="bg-background/50 border-white/10 focus:border-primary/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-subject-description">Notes & Reminders</Label>
+              <Textarea
+                id="edit-subject-description"
+                placeholder="Add notes, reminders, or a description..."
+                value={updatedSubject.description}
+                onChange={(e) => setUpdatedSubject({ ...updatedSubject, description: e.target.value })}
+                className="bg-background/50 border-white/10 focus:border-primary/50 min-h-[100px]"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsEditSubjectOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateSubject}>Save Changes</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       {/* Create Topic Dialog */}
       <Dialog open={isCreateTopicOpen} onOpenChange={setIsCreateTopicOpen}>
-        <DialogContent className="bg-card border-border max-w-2xl">
+
+        <DialogContent className="bg-card border-white/10 max-w-2xl">
           <DialogHeader>
-            <DialogTitle style={{ fontFamily: 'Montserrat' }}>Add New Topic</DialogTitle>
+            <DialogTitle>Add New Topic</DialogTitle>
             <DialogDescription>Create a new learning topic for this subject.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -458,7 +952,7 @@ export default function SubjectPage() {
                 placeholder="e.g., Variables and Data Types"
                 value={newTopic.title}
                 onChange={(e) => setNewTopic({ ...newTopic, title: e.target.value })}
-                className="bg-background border-border"
+                className="bg-background/50 border-white/10 focus:border-primary/50"
               />
             </div>
             <div className="space-y-2">
@@ -468,7 +962,7 @@ export default function SubjectPage() {
                 placeholder="Brief overview of what this topic covers..."
                 value={newTopic.description}
                 onChange={(e) => setNewTopic({ ...newTopic, description: e.target.value })}
-                className="bg-background border-border min-h-[80px]"
+                className="bg-background/50 border-white/10 focus:border-primary/50 min-h-[80px]"
               />
             </div>
             <div className="space-y-2">
@@ -478,7 +972,7 @@ export default function SubjectPage() {
                 placeholder="Detailed learning content, notes, or resources..."
                 value={newTopic.content}
                 onChange={(e) => setNewTopic({ ...newTopic, content: e.target.value })}
-                className="bg-background border-border min-h-[120px]"
+                className="bg-background/50 border-white/10 focus:border-primary/50 min-h-[120px]"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -491,7 +985,7 @@ export default function SubjectPage() {
                   max="240"
                   value={newTopic.estimated_minutes}
                   onChange={(e) => setNewTopic({ ...newTopic, estimated_minutes: parseInt(e.target.value) || 30 })}
-                  className="bg-background border-border"
+                  className="bg-background/50 border-white/10 focus:border-primary/50"
                 />
               </div>
               <div className="space-y-2">
@@ -500,7 +994,7 @@ export default function SubjectPage() {
                   value={newTopic.difficulty.toString()}
                   onValueChange={(value) => setNewTopic({ ...newTopic, difficulty: parseInt(value) })}
                 >
-                  <SelectTrigger className="bg-background border-border">
+                  <SelectTrigger className="bg-background/50 border-white/10 focus:border-primary/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -515,7 +1009,7 @@ export default function SubjectPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateTopicOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setIsCreateTopicOpen(false)}>Cancel</Button>
             <Button onClick={handleCreateTopic}>Create Topic</Button>
           </DialogFooter>
         </DialogContent>
@@ -523,9 +1017,9 @@ export default function SubjectPage() {
 
       {/* AI Generate Dialog */}
       <Dialog open={isAIGenerateOpen} onOpenChange={setIsAIGenerateOpen}>
-        <DialogContent className="bg-card border-border max-w-2xl">
+        <DialogContent className="bg-card border-white/10 max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2" style={{ fontFamily: 'Montserrat' }}>
+            <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-primary" />
               AI Curriculum Generator
             </DialogTitle>
@@ -533,7 +1027,10 @@ export default function SubjectPage() {
               Let AI create a complete learning path with topics and dependencies for your subject.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
+          {aiGenerating ? (
+            <ThreeDLoadingBar />
+          ) : (
+            <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="seed-text">Subject Context & Goals</Label>
               <Textarea
@@ -541,7 +1038,7 @@ export default function SubjectPage() {
                 placeholder="e.g., I want to learn Python programming from basics to building web applications. Include data structures, OOP, and Flask framework."
                 value={aiConfig.seedText}
                 onChange={(e) => setAiConfig({ ...aiConfig, seedText: e.target.value })}
-                className="bg-background border-border min-h-[120px]"
+                className="bg-background/50 border-white/10 focus:border-primary/50 min-h-[120px]"
               />
               <p className="text-xs text-muted-foreground">
                 Describe what you want to learn. The more specific, the better!
@@ -554,7 +1051,7 @@ export default function SubjectPage() {
                   value={aiConfig.difficulty.toString()}
                   onValueChange={(value) => setAiConfig({ ...aiConfig, difficulty: parseInt(value) })}
                 >
-                  <SelectTrigger className="bg-background border-border">
+                  <SelectTrigger className="bg-background/50 border-white/10 focus:border-primary/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -576,36 +1073,186 @@ export default function SubjectPage() {
                   step="30"
                   value={aiConfig.totalMinutes}
                   onChange={(e) => setAiConfig({ ...aiConfig, totalMinutes: parseInt(e.target.value) || 300 })}
-                  className="bg-background border-border"
+                  className="bg-background/50 border-white/10 focus:border-primary/50"
                 />
               </div>
             </div>
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">
-                💡 AI will generate 5-10 topics with dependencies based on your input. 
-                Topics will be automatically organized in a learning sequence with prerequisites.
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+              <p className="text-sm text-primary/80">
+                💡 AI will generate a complete, comprehensive study plan. 
+                This process involves creating detailed content for every topic, so effective preparation may take a while.
+                Please be patient while we set up your personalized resources.
               </p>
             </div>
           </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAIGenerateOpen(false)} disabled={aiGenerating}>
+            <Button variant="ghost" onClick={() => setIsAIGenerateOpen(false)} disabled={aiGenerating}>
               Cancel
             </Button>
-            <Button onClick={handleAIGenerate} disabled={aiGenerating} className="neon-glow">
-              {aiGenerating ? (
-                <>
-                  <span className="animate-pulse">Generating...</span>
-                </>
-              ) : (
-                <>
+            {!aiGenerating && (
+                <Button onClick={handleAIGenerate} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
                   <Sparkles className="mr-2 h-5 w-5" />
                   Generate Curriculum
-                </>
-              )}
-            </Button>
+                </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Link Topics Dialog */}
+      <Dialog open={isLinkTopicsOpen} onOpenChange={setIsLinkTopicsOpen}>
+        <DialogContent className="bg-card border-white/10 sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Link Topics</DialogTitle>
+            <DialogDescription>Create a dependency: user must learn Parent before Child.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="parent-topic">Parent Topic (Prerequisite)</Label>
+              <Select
+                value={linkConfig.parentTopicId}
+                onValueChange={(value) => setLinkConfig({ ...linkConfig, parentTopicId: value })}
+              >
+                <SelectTrigger className="bg-background/50 border-white/10 focus:border-primary/50">
+                  <SelectValue placeholder="Select prerequisite..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {topics.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex justify-center text-muted-foreground">
+                <ArrowLeft className="h-4 w-4 rotate-[-90deg]" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="child-topic">Child Topic (Locked)</Label>
+              <Select
+                value={linkConfig.childTopicId}
+                onValueChange={(value) => setLinkConfig({ ...linkConfig, childTopicId: value })}
+              >
+                <SelectTrigger className="bg-background/50 border-white/10 focus:border-primary/50">
+                  <SelectValue placeholder="Select target topic..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {topics.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsLinkTopicsOpen(false)}>Cancel</Button>
+            <Button onClick={handleLinkTopics}>Create Link</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dependency Alert */}
+      <AlertDialog open={!!dependencyToDelete} onOpenChange={(open) => !open && setDependencyToDelete(null)}>
+        <AlertDialogContent className="bg-card border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove Connection?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this dependency? The child topic might become available if it has no other prerequisites.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteDependency} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      {/* Topic Details & Edit Dialog */}
+      <Dialog open={isTopicDetailsOpen} onOpenChange={setIsTopicDetailsOpen}>
+        <DialogContent 
+          className="bg-card border-border/10 sm:max-w-[500px] max-h-[85vh] overflow-y-auto"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>Topic Details</DialogTitle>
+            <DialogDescription>View and edit topic information.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-topic-title">Topic Title</Label>
+              <Input
+                id="edit-topic-title"
+                value={topicEditForm.title}
+                onChange={(e) => setTopicEditForm({ ...topicEditForm, title: e.target.value })}
+                className="bg-background/50 border-input focus:border-primary/50"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-topic-description">Description</Label>
+              <Textarea
+                id="edit-topic-description"
+                value={topicEditForm.description}
+                onChange={(e) => setTopicEditForm({ ...topicEditForm, description: e.target.value })}
+                className="bg-background/50 border-input focus:border-primary/50 min-h-[100px]"
+              />
+            </div>
+
+            {selectedTopic && (
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-sm text-muted-foreground">
+                  Status: <span className={`uppercase font-bold ${getStatusColor(selectedTopic.status)}`}>{selectedTopic.status}</span>
+                </div>
+                {selectedTopic.status !== 'locked' && (
+                  <Button 
+                    size="sm" 
+                    onClick={() => router.push(selectedTopic.status === 'available' || selectedTopic.status === 'learning' ? `/learn/${selectedTopic.id}` : `/review/${selectedTopic.id}`)}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                  >
+                    <Play className="mr-1 h-3 w-3" />
+                    {selectedTopic.status === 'available' || selectedTopic.status === 'learning' ? 'Start Learning' : 'Review'}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+          <DialogFooter className="flex justify-between sm:justify-between items-center w-full">
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={() => handleDeleteTopic(selectedTopic)}
+              className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20 border"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Topic
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={() => setIsTopicDetailsOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpdateTopic}>Save Changes</Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Topic Alert */}
+      <AlertDialog open={!!topicToDelete} onOpenChange={(open) => !open && setTopicToDelete(null)}>
+        <AlertDialogContent className="bg-card border-white/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Topic?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete the topic <span className="font-semibold text-foreground">"{topicToDelete?.title}"</span>? 
+              This will remove all associated content and dependencies. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-white/10 hover:bg-white/5">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteTopic} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

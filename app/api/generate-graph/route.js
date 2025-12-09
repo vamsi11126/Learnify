@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 import { updateUnlockedTopics } from '@/lib/actions'
+import { generateWithGemini } from '@/lib/gemini'
 
 export async function POST(request) {
   try {
@@ -30,20 +31,81 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Subject not found' }, { status: 404 })
     }
 
-    // Call OpenRouter API for curriculum generation
+    // === FETCH USER'S API KEY ===
+    const { data: userData, error: userError } = await supabase
+      .from('profiles')
+      .select('gemini_api_key')
+      .eq('id', user.id)
+      .maybeSingle()
+
+    if (userError) {
+      console.error('Error fetching user data:', userError)
+      // Don't fail hard, just log and continue without user key
+    }
+
+    const userApiKey = userData?.gemini_api_key
+    
+    // Don't block if no user key - let generateWithGemini use fallback keys
+    // if (!userApiKey) { ... } -> Removed
+
+    // === FETCH EXISTING TOPICS FIRST (for AI-aware deduplication) ===
+    console.log('Fetching existing topics to inform AI...')
+    const { data: existingTopics, error: fetchError } = await supabase
+      .from('topics')
+      .select('id, title, description')
+      .eq('subject_id', subjectId)
+
+    if (fetchError) {
+      console.error('Error fetching existing topics:', fetchError)
+    }
+
+    const existingTopicsList = existingTopics && existingTopics.length > 0
+      ? existingTopics.map(t => `- ${t.title}`).join('\n')
+      : 'None'
+
+    console.log(`Found ${existingTopics?.length || 0} existing topics`)
+
+    // === FETCH USER PROFILE FOR PERSONALIZATION ===
+    const { data: userProfile, error: profileError } = await supabase
+      .from('profiles')
+      .select('education_level, learning_goals, preferred_learning_style, occupation')
+      .eq('id', user.id)
+      .single()
+
+    let personalizationContext = ''
+    if (!profileError && userProfile) {
+      personalizationContext = `
+USER PROFILE (PERSONALIZE THE CURRICULUM FOR THIS USER):
+- Education Level: ${userProfile.education_level || 'Not specified'}
+- Occupation: ${userProfile.occupation || 'Not specified'}
+- Learning Goals: ${userProfile.learning_goals || 'Not specified'}
+- Preferred Learning Style: ${userProfile.preferred_learning_style || 'Not specified'}
+
+INSTRUCTION: Use the user's profile to tailor the difficulty, examples, and progression of the topics. For example, if they are a visual learner, suggest topics that might lend themselves to diagrams (even though you are generating text titles). If they are a beginner, start with very fundamental concepts.
+`
+    }
+
+    // Call Gemini API for curriculum generation
     const systemPrompt = `You are a curriculum designer. Generate a learning path as a directed acyclic graph (DAG).
+${personalizationContext}
 
 CRITICAL RULES:
-1. Output ONLY valid JSON, no markdown, no explanations
-2. Create 5-10 topics with dependencies
-3. Each topic needs: slug (unique_id), title, description, estimatedMinutes
-4. Dependencies use slugs, not array indices
-5. Ensure NO CYCLES in the dependency graph
+1. Output ONLY valid JSON, absolutely NO markdown code blocks, no explanations
+2. Create 12-15 topics to provide COMPREHENSIVE coverage of the subject
+3. Prioritize breadth of topics. Cover all key areas, from basics to advanced.
+4. Each topic needs: slug (unique_id), title, brief description, estimatedMinutes
+5. Dependencies use slugs, not array indices
+6. Ensure NO CYCLES in the dependency graph
 6. First topic should have no dependencies (entry point)
 7. Difficulty level: ${difficulty}/5
 8. Total study time: approximately ${totalMinutes} minutes
 
-JSON FORMAT:
+EXISTING TOPICS (DO NOT DUPLICATE):
+${existingTopicsList}
+
+IMPORTANT: If any of the above existing topics already cover a concept you want to include, DO NOT create a similar/duplicate topic. Only create NEW topics that add unique value and are not already covered.
+
+JSON FORMAT (NO CODE BLOCKS):
 {
   "topics": [
     {
@@ -68,33 +130,18 @@ JSON FORMAT:
 Subject: ${subject.title}
 Context: ${seedText}`
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.NEXT_PUBLIC_BASE_URL,
-        'X-Title': 'Learnify'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-flash-1.5-8b',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Generate curriculum for: ${seedText}` }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000
-      })
+
+    console.log('Generating curriculum with Gemini...')
+    
+    const responseData = await generateWithGemini([
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: `Generate curriculum for: ${seedText}` }
+    ], {
+      maxOutputTokens: 8000,
+      apiKey: userApiKey
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      console.error('OpenRouter API error:', errorText)
-      return NextResponse.json({ error: 'AI generation failed' }, { status: 500 })
-    }
-
-    const aiResponse = await response.json()
-    const content = aiResponse.choices?.[0]?.message?.content
+    const content = responseData.choices[0].message.content
 
     if (!content) {
       return NextResponse.json({ error: 'No response from AI' }, { status: 500 })
@@ -103,14 +150,14 @@ Context: ${seedText}`
     // Parse JSON from AI response
     let curriculum
     try {
-      // Remove markdown code blocks if present
-      const cleanContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+      // Remove markdown code blocks if present (Gemini sometimes wraps in ```)
+      const cleanContent = content.replace(/```json/gi, '').replace(/```/g, '').trim()
       curriculum = JSON.parse(cleanContent)
     } catch (parseError) {
-      console.error('Failed to parse AI response:', content)
+      console.error('Failed to parse AI response:', content.slice(0, 500))
       return NextResponse.json({ 
         error: 'AI returned invalid JSON',
-        rawResponse: content 
+        rawResponse: content.slice(0, 200) 
       }, { status: 500 })
     }
 
@@ -125,11 +172,32 @@ Context: ${seedText}`
       return NextResponse.json({ error: 'Curriculum has circular dependencies' }, { status: 500 })
     }
 
-    // Insert topics into database
+    // === Use existing topics for deduplication map ===
+    const existingTopicMap = new Map()
+    if (existingTopics) {
+      existingTopics.forEach(topic => {
+        const normalizedTitle = topic.title.toLowerCase().trim()
+        existingTopicMap.set(normalizedTitle, topic.id)
+      })
+    }
+
+    // Insert or reuse topics
     const slugToIdMap = {}
     const insertedTopics = []
 
     for (const topic of curriculum.topics) {
+      const normalizedTitle = topic.title.toLowerCase().trim()
+      
+      // Check if topic already exists
+      if (existingTopicMap.has(normalizedTitle)) {
+        const existingId = existingTopicMap.get(normalizedTitle)
+        console.log(`Reusing existing topic: "${topic.title}" (ID: ${existingId})`)
+        slugToIdMap[topic.slug] = existingId
+        insertedTopics.push({ id: existingId, title: topic.title, isExisting: true })
+        continue
+      }
+
+      // Topic is new, insert it
       const { data: insertedTopic, error: insertError } = await supabase
         .from('topics')
         .insert([{

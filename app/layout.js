@@ -1,30 +1,52 @@
-import { Montserrat, Karla } from 'next/font/google'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
+import { ThemeProvider } from '@/components/theme-provider'
 
-const montserrat = Montserrat({ 
+const inter = Inter({ 
   subsets: ['latin'],
-  variable: '--font-montserrat',
-  weight: ['400', '500', '600', '700', '800']
+  variable: '--font-inter',
 })
 
-const karla = Karla({ 
-  subsets: ['latin'],
-  variable: '--font-karla',
-  weight: ['300', '400', '500', '600']
-})
+export const viewport = {
+  themeColor: "#ffffff",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+};
 
 export const metadata = {
-  title: 'Learnify - Master Anything with AI-Powered Learning',
+  title: 'Learnify',
   description: 'AI-powered spaced repetition learning platform with knowledge graphs',
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Learnify",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: "/icons/icon-192x192.png",
+    shortcut: "/icons/icon-192x192.png",
+    apple: "/icons/icon-192x192.png",
+  },
 }
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="dark">
-      <body className={`${montserrat.variable} ${karla.variable} antialiased`}>
-        {children}
-        <Toaster />
+    <html lang="en" suppressHydrationWarning>
+      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+        <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem
+            disableTransitionOnChange
+          >
+            {children}
+            <Toaster />
+        </ThemeProvider>
       </body>
     </html>
   )

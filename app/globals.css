@@ -1,77 +1,232 @@
-@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=Karla:wght@300;400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, fill 0.3s ease, stroke 0.3s ease;
+  }
+
   :root {
-    --background: 0 0% 17%; /* #2B2B2B */
-    --foreground: 0 0% 100%; /* #FFFFFF */
-    --card: 0 0% 17%;
-    --card-foreground: 0 0% 100%;
-    --popover: 0 0% 17%;
-    --popover-foreground: 0 0% 100%;
-    --primary: 280 100% 70%; /* Neon purple/magenta */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 70%; /* #B3B3B3 */
-    --secondary-foreground: 0 0% 17%;
-    --muted: 0 0% 45%; /* #727272 */
-    --muted-foreground: 0 0% 83%; /* #D4D4D4 */
-    --accent: 200 100% 60%; /* Neon blue */
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 25%;
-    --input: 0 0% 25%;
-    --ring: 280 100% 70%;
-    --radius: 0.5rem;
-    --chart-1: 200 100% 60%;
-    --chart-2: 280 100% 70%;
-    --chart-3: 160 100% 60%;
-    --chart-4: 50 100% 60%;
-    --chart-5: 340 100% 60%;
-    --sidebar-background: 0 0% 17%;
-    --sidebar-foreground: 0 0% 83%;
-    --sidebar-primary: 280 100% 70%;
+    --background: 0 0% 100%;
+    /* #ffffff White */
+    --foreground: 240 10% 3.9%;
+    /* #09090b Obsidian Black */
+
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+
+    --primary: 220 90% 50%;
+    --primary-foreground: 0 0% 98%;
+
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 220 90% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    --background: 240 10% 3.9%;
+    /* #09090b Obsidian Black */
+    --foreground: 0 0% 98%;
+    /* #fafafa */
+
+    --card: 240 10% 4.9%;
+    /* #0d0d10 Slightly lighter black for cards */
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 220 90% 50%;
+    /* #0ea5e9 Intense Blue */
+    --primary-foreground: 220 40% 98%;
+
+    --secondary: 220 10% 10%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 220 10% 10%;
+    --muted-foreground: 220 5% 64.9%;
+
+    --accent: 220 90% 50%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 100% 50%;
+    /* Neon Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 220 10% 10%;
+    --input: 220 10% 10%;
+    --ring: 220 90% 50%;
+
+    --sidebar-background: 240 10% 3.9%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 220 90% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 25%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 0 0% 25%;
-    --sidebar-ring: 280 100% 70%;
+    --sidebar-accent: 220 90% 50%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 220 10% 10%;
+    --sidebar-ring: 220 90% 50%;
+
+    --pattern-fg: rgba(0, 0, 0, 0.2);
   }
 }
 
 @layer base {
+  :root {
+    --pattern-fg: rgba(0, 0, 0, 0.4);
+  }
+
+  .dark {
+    --pattern-fg: rgba(255, 255, 255, 0.2);
+  }
+
   * {
     @apply border-border;
+    /* Custom scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
   }
+
+  /* Webkit scrollbar styling */
+  *::-webkit-scrollbar {
+    width: 5px;
+    /* Vertical scrollbar width */
+    height: 5px;
+    /* Horizontal scrollbar height */
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  html,
+  body {
+    overflow-x: hidden;
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-family: 'Karla', sans-serif;
-  }
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 700;
+    font-family: 'Inter', sans-serif;
   }
 }
 
 @layer utilities {
-  .neon-glow {
-    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5),
-                0 0 20px rgba(168, 85, 247, 0.3),
-                0 0 30px rgba(168, 85, 247, 0.1);
+  .glass {
+    @apply bg-background/60 backdrop-blur-lg border border-foreground/10;
   }
-  
-  .neon-glow-blue {
-    box-shadow: 0 0 10px rgba(59, 130, 246, 0.5),
-                0 0 20px rgba(59, 130, 246, 0.3),
-                0 0 30px rgba(59, 130, 246, 0.1);
+
+  .glass-card {
+    @apply bg-card/50 backdrop-blur-md border border-foreground/5;
   }
-  
-  .neon-text {
-    text-shadow: 0 0 10px rgba(168, 85, 247, 0.8),
-                 0 0 20px rgba(168, 85, 247, 0.5),
-                 0 0 30px rgba(168, 85, 247, 0.3);
+
+  .text-glow {
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
   }
+
+  .ambient-glow {
+    box-shadow: 0 0 40px -10px rgba(139, 92, 246, 0.3);
+  }
+
+
+
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  /* Utility for preserving 3D space */
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+
+  /* Utility for hiding backface */
+  .backface-hidden {
+    backface-visibility: hidden;
+  }
+
+
+  /* Utility for rotating Y 180deg */
+  .rotate-y-180 {
+    transform: rotateY(180deg);
+  }
+
+  /* Custom Scrollbar for Code Blocks */
+  .custom-scrollbar {
+    scrollbar-width: thin;
+    /* Firefox */
+    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+    /* Firefox */
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    display: block !important;
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+    display: block !important;
+  }
+}
+
+/* Remove default backticks from prose inline code */
+.prose :where(code):not(:where([class~="not-prose"] *))::before {
+  content: "" !important;
+}
+
+.prose :where(code):not(:where([class~="not-prose"] *))::after {
+  content: "" !important;
 }
