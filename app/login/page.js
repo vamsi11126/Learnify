@@ -44,10 +44,13 @@ export default function LoginPage() {
   }
 
   const handleOAuthLogin = async (provider) => {
+    const redirectUrl = `${window.location.origin}/auth/callback`
+    toast.info(`Redirecting to: ${redirectUrl}`)
+    
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: redirectUrl,
       },
     })
     if (error) {
