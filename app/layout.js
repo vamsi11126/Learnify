@@ -2,6 +2,7 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from '@/components/ui/sonner'
 import { ThemeProvider } from '@/components/theme-provider'
+import { DownloadBanner } from '@/components/download-banner'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -46,6 +47,8 @@ export default function RootLayout({ children }) {
             disableTransitionOnChange
           >
             {children}
+            <DownloadBanner />
+
             <Toaster />
         </ThemeProvider>
       </body>
