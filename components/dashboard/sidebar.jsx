@@ -17,6 +17,7 @@ export function Sidebar({ open, setOpen }) {
   return (
     <aside className={`
       fixed z-40 transition-all duration-300 flex flex-col shadow-2xl overflow-hidden group glass
+      pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]
       /* Mobile Styles */
       inset-y-0 left-0 h-full w-64
       ${open ? 'translate-x-0' : '-translate-x-full'}
@@ -24,6 +25,7 @@ export function Sidebar({ open, setOpen }) {
       /* Desktop Styles */
       md:translate-x-0
       md:top-6 md:bottom-6 md:left-6 md:rounded-3xl
+      md:pt-0 md:pb-0
       ${open ? 'md:w-64' : 'md:w-[70px]'}
     `}>
       <div className="p-4 border-b border-white/5 flex items-center justify-between">

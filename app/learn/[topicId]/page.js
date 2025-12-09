@@ -18,108 +18,17 @@ import 'katex/dist/katex.min.css'
 import { ThemeToggle } from '@/components/sub-components/theme-toggle'
 
 
-const cleanCodeContent = (content) => {
-  let cleaned = String(content).replace(/\n$/, '')
-  let prev
-  do {
-    prev = cleaned
-    // Recursively strip any combination of leading/trailing backticks and whitespace
-    cleaned = cleaned.trim().replace(/^`+|`+$/g, '').trim()
-  } while (cleaned !== prev)
-  return cleaned
-}
+import CodeBlock, { cleanCodeContent } from '@/components/sub-components/CodeBlock'
+import Flashcard from '@/components/sub-components/Flashcard'
 
-const CodeBlock = ({ node, inline, className, children, ...props }) => {
-  const match = /language-(\w+)/.exec(className || '')
-  const language = match ? match[1] : ''
-  const codeContent = cleanCodeContent(children)
-  
-  const [copied, setCopied] = useState(false)
-  const isSingleLine = !codeContent.includes('\n') && codeContent.length < 80
-  const isShortSnippet = !codeContent.includes('\n') && codeContent.length < 60
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(codeContent)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  // Force inline style for actual inline code OR short snippets
-  if (inline || isShortSnippet) {
-    return (
-      <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-mono text-sm border border-primary/20 break-words whitespace-pre-wrap align-middle" {...props}>
-        {codeContent}
-      </code>
-    )
-  }
-
-  // "Single Line" Block
-  if (isSingleLine) {
-    return (
-      <div className="relative group my-4 inline-block max-w-full align-middle w-full">
-         <div className="absolute -top-3 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-             <button
-            onClick={handleCopy}
-            className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded shadow-sm hover:bg-primary/90 transition-colors"
-          >
-            {copied ? 'COPIED' : 'COPY'}
-          </button>
-        </div>
-        <code className={`block ${className} bg-zinc-50 dark:bg-[#0d1117] px-4 py-3 rounded-lg border border-border dark:border-white/10 shadow-sm font-mono text-sm leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre-wrap break-words placeholder:break-all text-zinc-900 dark:text-zinc-100`} {...props}>
-          {codeContent}
-        </code>
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative group my-8 rounded-xl overflow-hidden border border-border dark:border-white/5 shadow-2xl bg-zinc-50 dark:bg-[#0d1117]">
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-100 dark:bg-white/5 border-b border-border dark:border-white/5">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-[#ff5f56] shadow-sm" />
-            <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-sm" />
-            <div className="w-3 h-3 rounded-full bg-[#27c93f] shadow-sm" />
-          </div>
-          {language && (
-            <span className="ml-3 text-xs font-mono text-muted-foreground font-medium uppercase tracking-wider">
-              {language}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopy}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-200 dark:hover:bg-white/5"
-            title="Copy code"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3 text-green-500" />
-                <span className="uppercase text-[10px] font-bold tracking-wider text-green-500">Copied</span>
-              </>
-            ) : (
-              <span className="uppercase text-[10px] font-bold tracking-wider">Copy</span>
-            )}
-          </button>
-        </div>
-      </div>
-      <div className="p-4 overflow-x-auto custom-scrollbar">
-        <code className={`${className} font-mono text-sm leading-relaxed whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100`} {...props}>
-          {codeContent}
-        </code>
-      </div>
-    </div>
-  )
-}
 
 const MarkdownComponents = {
   h1: ({ node, ...props }) => (
     <h1 className="text-2xl md:text-3xl font-bold mt-6 md:mt-10 mb-4 md:mb-6 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent inline-block pb-2 border-b border-white/10 w-full" {...props} />
   ),
   h2: ({ node, ...props }) => (
-    <h2 className="text-xl md:text-2xl font-bold mt-6 md:mt-8 mb-3 md:mb-4 text-foreground flex items-center gap-2 group" {...props}>
-      <div className="h-6 w-1 md:h-8 md:w-1 bg-primary rounded-full" />
+    <h2 className="text-lg md:text-2xl font-bold mt-6 md:mt-8 mb-3 md:mb-4 text-foreground flex items-center gap-2 group" {...props}>
+      <div className="h-6 w-1 md:h-8 md:w-1 bg-primary rounded-full shrink-0" />
       {props.children}
     </h2>
   ),
@@ -167,76 +76,6 @@ const MarkdownComponents = {
   img: ({ node, ...props }) => (
     // eslint-disable-next-line @next/next/no-img-element
     <img className="rounded-xl border border-white/10 shadow-lg my-8 w-full object-cover" alt={props.alt} {...props} />
-  )
-}
-
-
-const MiniMarkdownComponents = {
-  p: ({ node, ...props }) => <p className="mb-4 text-base md:text-lg text-foreground/90 leading-relaxed last:mb-0" {...props} />,
-  strong: ({ node, ...props }) => <span className="font-bold text-primary" {...props} />,
-  ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-4 text-left space-y-2 text-muted-foreground" {...props} />,
-  ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-4 text-left space-y-2 text-muted-foreground" {...props} />,
-  li: ({ node, ...props }) => <li className="marker:text-primary" {...props} />,
-  code: ({ node, inline, children, ...props }) => {
-    const codeContent = cleanCodeContent(children)
-    const isShortSnippet = !codeContent.includes('\n') && codeContent.length < 60
-    
-    return (inline || isShortSnippet)
-      ? <code className="bg-primary/10 text-primary px-1 rounded text-sm font-mono break-words whitespace-pre-wrap" {...props}>{codeContent}</code> 
-      : <code className="block bg-muted/50 p-2 rounded-md text-sm font-mono my-2 whitespace-pre-wrap text-left border border-border" {...props}>{codeContent}</code>
-  },
-}
-
-const Flashcard = ({ front, back, isFlipped, onFlip }) => {
-  return (
-    <div 
-      className="relative w-full h-80 md:h-96 cursor-pointer group perspective-1000"
-      onClick={onFlip}
-    >
-      <div className={`relative w-full h-full duration-700 transform-style-3d transition-all ${isFlipped ? 'rotate-y-180' : ''}`}>
-        {/* Front Face */}
-        <div className="absolute inset-0 w-full h-full backface-hidden">
-          <Card className="h-full flex flex-col items-center justify-center p-8 glass-card border-primary/20 hover:border-primary/50 transition-colors shadow-2xl shadow-primary/5">
-            <div className="absolute top-4 left-4 text-xs font-mono text-muted-foreground uppercase tracking-widest opacity-50">
-              Question
-            </div>
-            <CardContent className="text-center p-0">
-               <div className="mb-6 mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Sparkles className="w-6 h-6" />
-               </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
-                {front}
-              </h3>
-              <p className="mt-8 text-sm text-muted-foreground animate-pulse">
-                Click or Press Space to Flip
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Back Face */}
-        <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180">
-          <Card className="h-full flex flex-col p-8 bg-card border border-primary/30 shadow-2xl shadow-primary/10 relative">
-             <div className="absolute top-4 left-4 text-xs font-mono text-primary uppercase tracking-widest opacity-70 z-10">
-              Answer
-            </div>
-            <CardContent className="text-center p-0 h-full overflow-y-auto flex flex-col justify-center w-full pt-6">
-              <div className="w-full">
-                <ReactMarkdown 
-                    remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                    components={MiniMarkdownComponents}
-                >
-                    {back}
-                </ReactMarkdown>
-              </div>
-            </CardContent>
-             {/* Scroll Indicator Gradient */}
-             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-          </Card>
-        </div>
-      </div>
-    </div>
   )
 }
 
@@ -530,19 +369,19 @@ export default function LearnPage() {
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-8 flex justify-between items-end">
              <div>
-                <Button variant="ghost" onClick={() => setShowFlashcards(false)} className="hover:bg-white/5 -ml-4 mb-2">
+                <Button variant="ghost" onClick={() => setShowFlashcards(false)} className="hover:bg-white/5 -ml-4 mb-2 md:mb-0">
                     <ArrowLeft className="mr-2 h-5 w-5" />
                     Back to Content
                 </Button>
-                <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold tracking-tight">Flashcards</h2>
+                <div className="flex flex-col md:flex-row md:items-center gap-2">
+                    <h2 className="text-xl md:text-2xl font-bold tracking-tight">Flashcards</h2>
                     <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-mono border border-primary/20">
                         {topic.title}
                     </span>
                 </div>
              </div>
              <div className="text-right">
-                <div className="text-3xl font-bold font-mono text-primary">
+                 <div className="text-2xl md:text-3xl font-bold font-mono text-primary">
                     {String(currentCard + 1).padStart(2, '0')}
                     <span className="text-muted-foreground text-lg">/{String(flashcards.length).padStart(2, '0')}</span>
                 </div>
@@ -564,20 +403,20 @@ export default function LearnPage() {
             onFlip={() => setIsFlipped(!isFlipped)}
           />
 
-          <div className="mt-12 flex justify-between items-center gap-4">
+          <div className="mt-8 md:mt-12 flex flex-col-reverse md:flex-row justify-between items-center gap-4">
             <Button 
                 variant="outline" 
                 size="lg"
                 onClick={handlePrevCard} 
-                className="glass border-white/10 hover:bg-white/5 min-w-[120px]"
+                className="w-full md:w-auto glass border-white/10 hover:bg-white/5 min-w-[120px]"
             >
               Previous
               <span className="ml-2 text-xs text-muted-foreground hidden md:inline-block border border-white/10 px-1.5 rounded bg-black/20">←</span>
             </Button>
 
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2 order-first md:order-none mb-4 md:mb-0">
                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium opacity-50">
-                    Space to Flip
+                    Tap to Flip
                  </span>
             </div>
 
@@ -585,7 +424,7 @@ export default function LearnPage() {
                  <Button 
                     size="lg"
                     onClick={handleCompleteLearning} 
-                    className="bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20 min-w-[120px]"
+                    className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/20 min-w-[120px]"
                  >
                     <Check className="mr-2 h-5 w-5" />
                     Finish
@@ -595,7 +434,7 @@ export default function LearnPage() {
                     variant="outline"
                     size="lg"
                     onClick={handleNextCard} 
-                    className="glass border-white/10 hover:bg-white/5 min-w-[120px]"
+                    className="w-full md:w-auto glass border-white/10 hover:bg-white/5 min-w-[120px]"
                 >
                     Next
                     <span className="ml-2 text-xs text-muted-foreground hidden md:inline-block border border-white/10 px-1.5 rounded bg-black/20">→</span>
@@ -611,17 +450,17 @@ export default function LearnPage() {
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20 selection:text-primary">
       {/* Fixed Header Container */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-white/10 supports-[backdrop-filter]:bg-background/60">
+      <div className="fixed top-0 left-0 right-0 z-50 pt-[env(safe-area-inset-top)] bg-background/95 backdrop-blur-md border-b border-white/10 supports-[backdrop-filter]:bg-background/60">
           {/* Main Header */}
-          <div className="container mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={() => router.push(`/subjects/${subject.id}`)} className="hover:bg-white/5">
+          <div className="container mx-auto px-4 md:px-6 py-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0">
+                <Button variant="ghost" size="icon" onClick={() => router.push(`/subjects/${subject.id}`)} className="hover:bg-white/5 shrink-0">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
-                <div>
-                  <div className="text-sm text-muted-foreground">{subject.title}</div>
-                  <h1 className="text-lg md:text-2xl font-bold tracking-tight truncate max-w-[200px] md:max-w-md">{topic.title}</h1>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm text-muted-foreground truncate">{subject.title}</div>
+                  <h1 className="text-base md:text-2xl font-bold tracking-tight truncate">{topic.title}</h1>
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-white/5 px-3 py-2 rounded-full border border-white/5 shrink-0">
@@ -629,7 +468,7 @@ export default function LearnPage() {
                 <span className="text-sm font-medium hidden md:inline">{formatTime(remainingSeconds)} remaining</span>
                 <span className="text-sm font-medium md:hidden">{formatTime(remainingSeconds)}</span>
               </div>
-              <ThemeToggle className="ml-4" />
+              <ThemeToggle className="hidden md:flex ml-4" />
             </div>
           </div>
 
@@ -645,27 +484,27 @@ export default function LearnPage() {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-6 pt-[160px] pb-12 max-w-4xl">
+      <div className="container mx-auto px-4 md:px-6 pt-[calc(140px+env(safe-area-inset-top))] md:pt-[calc(160px+env(safe-area-inset-top))] pb-[calc(3rem+env(safe-area-inset-bottom))] max-w-4xl">
         <Card className="glass-card mb-8">
           <CardHeader>
-            <CardTitle className="text-3xl font-bold tracking-tight">{topic.title}</CardTitle>
-            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-4">
+            <CardTitle className="text-2xl md:text-3xl font-bold tracking-tight">{topic.title}</CardTitle>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground mt-4">
               <span className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-primary"></span> Difficulty: {topic.difficulty}/5</span>
-              <span>•</span>
+              <span className="hidden sm:inline">•</span>
               <span>Estimated: {topic.estimated_minutes} minutes</span>
             </div>
           </CardHeader>
           <CardContent className="prose dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-p:text-muted-foreground prose-p:leading-relaxed">
             {topic.description && (
-              <div className="mb-8 p-6 bg-white/5 rounded-xl border border-white/5">
-                <h3 className="text-xl font-semibold mb-3 text-foreground mt-0">Overview</h3>
-                <p className="text-lg leading-relaxed m-0">{topic.description}</p>
+              <div className="mb-6 md:mb-8 p-4 md:p-6 bg-white/5 rounded-xl border border-white/5">
+                <h3 className="text-lg md:text-xl font-semibold mb-3 text-foreground mt-0">Overview</h3>
+                <p className="text-base md:text-lg leading-relaxed m-0">{topic.description}</p>
               </div>
             )}
             
             {topic.content && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
-                <h3 className="text-xl font-semibold mb-6 text-foreground flex items-center gap-2">
+                <h3 className="text-lg md:text-xl font-semibold mb-6 text-foreground flex items-center gap-2">
                   <Sparkles className="h-5 w-5 text-primary" />
                   Comprehensive Guide
                 </h3>
@@ -711,7 +550,7 @@ export default function LearnPage() {
           <Button variant="outline" size="lg" onClick={handleShowFlashcards} className="w-full md:w-auto glass border-white/10 hover:bg-white/5">
             Practice with Flashcards
           </Button>
-          <Button size="lg" onClick={handleCompleteLearning} className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20">
+          <Button size="lg" onClick={handleCompleteLearning} className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 h-12 md:h-11">
             <Check className="mr-2 h-5 w-5" />
             Mark as Learned
           </Button>

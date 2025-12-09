@@ -34,7 +34,7 @@ export default function DashboardLayout({ children }) {
           ml-0`}
       >
         <Header setSidebarOpen={setSidebarOpen} />
-        <div className="pt-20 px-4 md:pt-16 md:p-8 max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
+        <div className="pt-[calc(5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] px-4 md:pt-[calc(4rem+env(safe-area-inset-top))] md:p-8 max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
             {children}
         </div>
       </main>

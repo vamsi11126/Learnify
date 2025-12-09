@@ -61,11 +61,11 @@ export default function SignupPage() {
 
   return (
     <>
-      <div className="absolute top-4 right-4 z-50">
+      <div className="absolute top-[calc(1rem+env(safe-area-inset-top))] right-4 z-50">
         <ThemeToggle />
       </div>
 
-      <div className="min-h-screen bg-background flex items-center justify-center p-4 selection:bg-primary/20 selection:text-primary relative overflow-hidden">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4 pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))] selection:bg-primary/20 selection:text-primary relative overflow-hidden">
       {/* Decorative Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-primary/10 rounded-full blur-[120px] mix-blend-screen opacity-50"></div>

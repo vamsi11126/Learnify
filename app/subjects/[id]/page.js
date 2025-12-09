@@ -11,8 +11,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Plus, ArrowLeft, Network, BookOpen, Settings, Trash2, Sparkles, Play, RotateCw, Home, Pencil, Share2, Copy, Check, Globe, Lock } from 'lucide-react'
+import { Plus, ArrowLeft, Network, BookOpen, Settings, Trash2, Sparkles, Play, RotateCw, Home, Pencil, Share2, Copy, Check, Globe, Lock, Menu, MoreVertical } from 'lucide-react'
 import { toast } from 'sonner'
 import GraphVisualizer from '@/components/GraphVisualizer'
 import RecommendationWidget from '@/components/RecommendationWidget'
@@ -576,7 +578,7 @@ export default function SubjectPage() {
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background selection:bg-primary/20 selection:text-primary">
       {/* Top Bar */}
-      <div className="border-b border-white/5 bg-background/80 backdrop-blur-md z-40 shrink-0">
+      <div className="border-b border-white/5 bg-background/80 backdrop-blur-md z-40 shrink-0 pt-[env(safe-area-inset-top)]">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 min-w-0">
@@ -606,51 +608,129 @@ export default function SubjectPage() {
               </div>
             </div>
             <div className="flex gap-2 items-center shrink-0 ml-2">
-              {/* Public Toggle & Share */}
-              {subject && (
-                <div className="flex items-center gap-2 mr-0 md:mr-2 bg-white/5 rounded-full px-2 md:px-3 py-1.5 border border-white/5">
-                   {subject.is_public ? (
-                      <Globe className="h-4 w-4 text-sky-400" />
-                   ) : (
-                      <Lock className="h-4 w-4 text-zinc-400" />
-                   )}
-                   <Label htmlFor="public-mode" className="text-xs font-medium cursor-pointer hidden md:block">
-                      {subject.is_public ? 'Public' : 'Private'}
-                   </Label>
-                   <Switch 
-                      id="public-mode"
-                      checked={subject.is_public || false}
-                      onCheckedChange={handleTogglePublic}
-                      className="ml-1 scale-75 data-[state=checked]:bg-sky-500 data-[state=unchecked]:bg-zinc-600 dark:data-[state=unchecked]:bg-zinc-700"
-                   />
-                </div>
-              )}
-              
-              {subject?.is_public && (
-                <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="glass border-sky-500/20 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 mr-2 px-2 md:px-3"
-                    onClick={handleCopyLink}
-                >
-                    {isCopied ? <Check className="mr-0 md:mr-2 h-4 w-4" /> : <Share2 className="mr-0 md:mr-2 h-4 w-4" />}
-                    <span className="hidden md:inline">{isCopied ? 'Copied' : 'Share'}</span>
-                </Button>
-              )}
+              {/* Desktop Actions */}
+              <div className="hidden md:flex items-center gap-2">
+                  {/* Public Toggle & Share */}
+                  {subject && (
+                    <div className="flex items-center gap-2 mr-2 bg-white/5 rounded-full px-3 py-1.5 border border-white/5">
+                      {subject.is_public ? (
+                          <Globe className="h-4 w-4 text-sky-400" />
+                      ) : (
+                          <Lock className="h-4 w-4 text-zinc-400" />
+                      )}
+                      <Label htmlFor="public-mode" className="text-xs font-medium cursor-pointer">
+                          {subject.is_public ? 'Public' : 'Private'}
+                      </Label>
+                      <Switch 
+                          id="public-mode"
+                          checked={subject.is_public || false}
+                          onCheckedChange={handleTogglePublic}
+                          className="ml-1 scale-75 data-[state=checked]:bg-sky-500 data-[state=unchecked]:bg-zinc-600 dark:data-[state=unchecked]:bg-zinc-700"
+                      />
+                    </div>
+                  )}
+                  
+                  {subject?.is_public && (
+                    <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="glass border-sky-500/20 text-sky-400 hover:bg-sky-500/10 hover:text-sky-300 mr-2 px-3"
+                        onClick={handleCopyLink}
+                    >
+                        {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Share2 className="mr-2 h-4 w-4" />}
+                        <span>{isCopied ? 'Copied' : 'Share'}</span>
+                    </Button>
+                  )}
 
-              <Button onClick={() => setIsAIGenerateOpen(true)} variant="outline" className="glass border-primary/30 hover:bg-primary/10 hover:border-primary/50 text-primary px-2 md:px-4">
-                <Sparkles className="mr-0 md:mr-2 h-5 w-5" />
-                <span className="hidden md:inline">AI Generate</span>
-              </Button>
-              <Button onClick={() => setIsLinkTopicsOpen(true)} variant="outline" className="glass border-white/10 hover:bg-white/5 px-2 md:px-4">
-                <Network className="mr-0 md:mr-2 h-5 w-5" />
-                <span className="hidden md:inline">Link</span>
-              </Button>
-              <Button onClick={() => setIsCreateTopicOpen(true)} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-2 md:px-4">
-                <Plus className="mr-0 md:mr-2 h-5 w-5" />
-                <span className="hidden md:inline">Add Topic</span>
-              </Button>
-              <ThemeToggle />
+                  <Button onClick={() => setIsAIGenerateOpen(true)} variant="outline" className="glass border-primary/30 hover:bg-primary/10 hover:border-primary/50 text-primary px-4">
+                    <Sparkles className="mr-2 h-5 w-5" />
+                    <span>AI Generate</span>
+                  </Button>
+                  <Button onClick={() => setIsLinkTopicsOpen(true)} variant="outline" className="glass border-white/10 hover:bg-white/5 px-4">
+                    <Network className="mr-2 h-5 w-5" />
+                    <span>Link</span>
+                  </Button>
+                  <Button onClick={() => setIsCreateTopicOpen(true)} className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 px-4">
+                    <Plus className="mr-2 h-5 w-5" />
+                    <span>Add Topic</span>
+                  </Button>
+                  <ThemeToggle />
+              </div>
+
+              {/* Mobile Sidebar Trigger */}
+              <div className="md:hidden flex items-center">
+                  <Sheet>
+                      <SheetTrigger asChild>
+                          <Button variant="ghost" size="icon" className="hover:bg-white/5">
+                              <Menu className="h-6 w-6" />
+                          </Button>
+                      </SheetTrigger>
+
+                      <SheetContent className="flex flex-col gap-6 w-[85vw] sm:w-[350px] bg-background text-foreground border-l border-border/50">
+                    <SheetHeader>
+                      <SheetTitle className="text-left text-xl font-bold flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-primary" />
+                        Actions
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="flex flex-col gap-4 mt-2">
+                       {/* Visibility Toggle */}
+                       {subject && (
+                         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border border-border/50">
+                          <div className="flex items-center gap-3">
+                             {subject.is_public ? (
+                                 <Globe className="h-4 w-4 text-sky-500" />
+                             ) : (
+                                 <Lock className="h-4 w-4 text-muted-foreground" />
+                             )}
+                             <span className="text-sm font-medium">Public Access</span>
+                          </div>
+                          <Switch 
+                              checked={subject.is_public || false}
+                              onCheckedChange={handleTogglePublic}
+                              className="scale-90 data-[state=checked]:bg-sky-500"
+                          />
+                         </div>
+                       )}
+
+                       {subject?.is_public && (
+                          <Button 
+                              variant="outline" 
+                              onClick={handleCopyLink}
+                              className="w-full justify-start h-12 text-sky-500 border-sky-500/20 hover:bg-sky-500/10 hover:text-sky-600 dark:text-sky-400 dark:hover:text-sky-300"
+                          >
+                              {isCopied ? <Check className="mr-3 h-5 w-5" /> : <Share2 className="mr-3 h-5 w-5" />}
+                              {isCopied ? 'Link Copied' : 'Share Public Link'}
+                          </Button>
+                       )}
+
+                       <div className="h-px bg-border/50 my-1" />
+
+                       <Button onClick={() => setIsAIGenerateOpen(true)} variant="outline" className="w-full justify-start h-12 border-primary/20 hover:bg-primary/5 hover:text-primary hover:border-primary/50">
+                          <Sparkles className="mr-3 h-5 w-5 text-primary" />
+                          AI Generate
+                       </Button>
+
+                       <Button onClick={() => setIsLinkTopicsOpen(true)} variant="outline" className="w-full justify-start h-12 border-border/50 hover:bg-muted/50">
+                          <Network className="mr-3 h-5 w-5 text-muted-foreground" />
+                          Link Topics
+                       </Button>
+
+                         <Button onClick={() => setIsCreateTopicOpen(true)} className="w-full justify-start h-12 bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+                          <Plus className="mr-3 h-5 w-5" />
+                          Add New Topic
+                        </Button>
+                    </div>
+
+                    <div className="mt-auto border-t border-border/50 pt-4">
+                        <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-muted-foreground">Theme</span>
+                            <ThemeToggle />
+                        </div>
+                    </div>
+                  </SheetContent>
+                  </Sheet>
+              </div>
             </div>
           </div>
         </div>
@@ -667,7 +747,7 @@ export default function SubjectPage() {
             </TabsList>
           </div>
 
-          <TabsContent value="overview" className="flex-1 overflow-y-auto p-6 container mx-auto">
+          <TabsContent value="overview" className="flex-1 overflow-y-auto p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] container mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
               {/* Left Column: Metrics & Stats */}
               <div className="lg:col-span-2 space-y-6">
@@ -793,7 +873,7 @@ export default function SubjectPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="graph" className="flex-1 h-full p-0 data-[state=active]:flex flex-col overflow-hidden">
+          <TabsContent value="graph" className="flex-1 h-full p-0 data-[state=active]:flex flex-col overflow-hidden pb-[env(safe-area-inset-bottom)]">
             <div className="h-full w-full bg-black/20">
               <GraphVisualizer
                 topics={topics}
@@ -806,7 +886,7 @@ export default function SubjectPage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="topics" className="flex-1 overflow-y-auto p-6 space-y-4 container mx-auto">
+          <TabsContent value="topics" className="flex-1 overflow-y-auto p-6 space-y-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))] container mx-auto">
             {topics.length === 0 ? (
               <Card className="glass-card border-dashed border-foreground/10">
                 <CardContent className="flex flex-col items-center justify-center py-16">
@@ -825,41 +905,43 @@ export default function SubjectPage() {
               topics.map((topic) => {
                 const isDue = topic.next_review_at && isDueForReview(topic.next_review_at)
                 return (
-                  <Card key={topic.id} className="glass-card hover:bg-foreground/5 transition-all group border-foreground/5">
+                  <Card key={topic.id} className="glass-card hover:bg-white/5 transition-all group border-white/5 relative overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
                     <CardHeader>
                       <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <CardTitle className="text-xl mb-2 flex items-center gap-3">
+                        <div className="flex-1 relative z-10">
+                          <CardTitle className="text-lg md:text-xl font-bold mb-3 flex flex-wrap items-center gap-2">
                             {topic.title}
                              <span className={`px-2.5 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider border ${getStatusBadge(topic.status)}`}>
                               {topic.status}
                             </span>
                           </CardTitle>
-                          <CardDescription className="line-clamp-2 text-muted-foreground/80">{topic.description || 'No description'}</CardDescription>
+                          <CardDescription className="line-clamp-2 text-muted-foreground text-sm md:text-base">{topic.description || 'No description'}</CardDescription>
                         </div>
-                        <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => openTopicDetails(topic)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:bg-primary/10 hover:text-primary"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteTopic(topic)}
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                        <div onClick={(e) => e.stopPropagation()} className="relative z-10">
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-white">
+                                      <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="bg-black/90 border-white/10 backdrop-blur-md">
+                                  <DropdownMenuItem onClick={() => openTopicDetails(topic)} className="cursor-pointer focus:bg-white/10 focus:text-white">
+                                      <Pencil className="mr-2 h-4 w-4" />
+                                      Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleDeleteTopic(topic)} className="cursor-pointer text-red-400 focus:text-red-400 focus:bg-red-500/10">
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete Topic
+                                  </DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <CardContent className="relative z-10 pt-2 md:pt-0">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs md:text-sm text-muted-foreground">
                           <span className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-foreground/50"></span> {topic.estimated_minutes} min</span>
                           <span className="flex items-center gap-1.5"><span className="w-1 h-1 rounded-full bg-foreground/50"></span> Difficulty: {topic.difficulty}/5</span>
                           {topic.next_review_at && (
@@ -869,12 +951,12 @@ export default function SubjectPage() {
                             </span>
                           )}
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full md:w-auto">
                           {(topic.status === 'available' || topic.status === 'learning') && (
                             <Button 
                               size="sm" 
                               onClick={() => router.push(`/learn/${topic.id}`)}
-                              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                              className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20"
                             >
                               <Play className="mr-1 h-4 w-4" />
                               Learn
@@ -939,7 +1021,7 @@ export default function SubjectPage() {
       {/* Create Topic Dialog */}
       <Dialog open={isCreateTopicOpen} onOpenChange={setIsCreateTopicOpen}>
 
-        <DialogContent className="bg-card border-white/10 max-w-2xl">
+        <DialogContent className="bg-card border-white/10 w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Topic</DialogTitle>
             <DialogDescription>Create a new learning topic for this subject.</DialogDescription>
@@ -1017,7 +1099,7 @@ export default function SubjectPage() {
 
       {/* AI Generate Dialog */}
       <Dialog open={isAIGenerateOpen} onOpenChange={setIsAIGenerateOpen}>
-        <DialogContent className="bg-card border-white/10 max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="bg-card border-white/10 w-[95vw] max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-primary" />
@@ -1101,7 +1183,7 @@ export default function SubjectPage() {
       </Dialog>
       {/* Link Topics Dialog */}
       <Dialog open={isLinkTopicsOpen} onOpenChange={setIsLinkTopicsOpen}>
-        <DialogContent className="bg-card border-white/10 sm:max-w-[425px]">
+        <DialogContent className="bg-card border-white/10 w-[95vw] sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Link Topics</DialogTitle>
             <DialogDescription>Create a dependency: user must learn Parent before Child.</DialogDescription>
@@ -1172,7 +1254,7 @@ export default function SubjectPage() {
       {/* Topic Details & Edit Dialog */}
       <Dialog open={isTopicDetailsOpen} onOpenChange={setIsTopicDetailsOpen}>
         <DialogContent 
-          className="bg-card border-border/10 sm:max-w-[500px] max-h-[85vh] overflow-y-auto"
+          className="bg-card border-border/10 w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>

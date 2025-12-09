@@ -18,7 +18,7 @@ export function Header({ setSidebarOpen }) {
   }, [])
 
   return (
-    <header className="fixed top-0 right-0 left-0 h-16 bg-background/50 backdrop-blur-md border-b border-white/5 z-30 flex items-center justify-between md:justify-end px-4 md:px-8">
+    <header className="fixed top-0 right-0 left-0 h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] bg-background/50 backdrop-blur-md border-b border-white/5 z-30 flex items-center justify-between md:justify-end px-4 md:px-8">
         {/* Mobile Menu Trigger */}
         <Button 
             variant="ghost" 

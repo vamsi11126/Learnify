@@ -120,8 +120,8 @@ export default function CommunityPage() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-           <h1 className="text-3xl font-bold tracking-tight mb-1">Community</h1>
-           <p className="text-muted-foreground">Discover and clone knowledge paths created by others</p>
+           <h1 className="text-2xl md:text-3xl font-bold tracking-tight mb-1">Community</h1>
+           <p className="text-sm md:text-base text-muted-foreground">Discover and clone knowledge paths created by others</p>
         </div>
         
         {/* Search Bar - styled to match dashboard actions */}
@@ -129,7 +129,7 @@ export default function CommunityPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input 
                 placeholder="Search..." 
-                className="pl-9 bg-background border-input focus:border-primary"
+                className="pl-9 bg-background border-input focus:border-primary w-full"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -138,12 +138,12 @@ export default function CommunityPage() {
 
       {/* Grid */}
       {filteredSubjects.length === 0 ? (
-        <div className="text-center py-20 border border-dashed border-border rounded-3xl bg-muted/10">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
-                <Search className="h-8 w-8 text-muted-foreground" />
+        <div className="text-center py-12 md:py-20 border border-dashed border-border rounded-3xl bg-muted/10 mx-auto max-w-lg">
+            <div className="w-12 h-12 md:w-16 md:h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+                <Search className="h-6 w-6 md:h-8 md:w-8 text-muted-foreground" />
             </div>
-            <h3 className="text-xl font-semibold mb-2">No subjects found</h3>
-            <p className="text-muted-foreground max-w-sm mx-auto">
+            <h3 className="text-lg md:text-xl font-semibold mb-2">No subjects found</h3>
+            <p className="text-sm md:text-base text-muted-foreground max-w-xs md:max-w-sm mx-auto px-4">
                 No public subjects match "{searchQuery}".
             </p>
             <Button 
@@ -155,28 +155,28 @@ export default function CommunityPage() {
             </Button>
         </div>
       ) : (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {filteredSubjects.map(subject => (
                 <Card 
                     key={subject.id}
                     className="bg-card hover:bg-muted/50 transition-all cursor-pointer group border-border hover:border-primary/50 hover:shadow-md flex flex-col h-full overflow-hidden"
                     onClick={() => router.push(`/u/${encodeURIComponent(subject.author)}/subjects/${subject.id}`)}
                 >
-                    <CardHeader className="pb-3">
+                    <CardHeader className="pb-3 p-4 md:p-6">
                         <div className="flex justify-between items-start gap-2">
-                           <CardTitle className="text-xl font-bold tracking-tight group-hover:text-primary transition-colors line-clamp-2">
+                           <CardTitle className="text-lg md:text-xl font-bold tracking-tight group-hover:text-primary transition-colors line-clamp-2">
                                {subject.title}
                            </CardTitle>
-                           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] uppercase tracking-wider shrink-0">
+                           <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-[10px] uppercase tracking-wider shrink-0 mt-1">
                                Public
                            </Badge>
                         </div>
-                        <CardDescription className="line-clamp-2 min-h-[40px]">
+                        <CardDescription className="line-clamp-2 min-h-[40px] text-xs md:text-sm">
                             {subject.description || 'No description provided.'}
                         </CardDescription>
                     </CardHeader>
                     
-                    <CardContent className="flex-1 flex flex-col pb-4">
+                    <CardContent className="flex-1 flex flex-col pb-4 px-4 md:px-6">
                         <div className="flex items-center gap-3 mt-auto pt-4 border-t border-border">
                             <Avatar className="h-6 w-6 border border-border">
                                 <AvatarFallback className="text-[10px] bg-primary/20 text-primary">

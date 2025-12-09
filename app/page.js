@@ -99,7 +99,7 @@ export default function LandingPage() {
         initial={{ y: -100, x: "-50%", opacity: 0 }}
         animate={{ y: 0, x: "-50%", opacity: 1 }}
         transition={{ duration: 0.8, ease: "easeOut" }}
-        className="fixed top-6 left-1/2 w-[90%] max-w-5xl z-50 rounded-full"
+        className="fixed top-[calc(1.5rem+env(safe-area-inset-top))] left-1/2 w-[90%] max-w-5xl z-50 rounded-full"
       >
         <div className="glass rounded-full px-6 py-3 flex justify-between items-center shadow-2xl transition-all hover:bg-background/80 relative">
           <div className="flex items-center gap-2 cursor-pointer" onClick={() => {
@@ -169,7 +169,7 @@ export default function LandingPage() {
                 transition={{ duration: 0.8, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
                 className="block text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-600 to-violet-600 animate-gradient bg-300% text-glow"
               >
-                AI & Spaced R<Typewriter text="epetition." />
+                AI & Spaced<br className="sm:hidden" /><span className="hidden sm:inline"> </span>R<Typewriter text="epetition." />
               </motion.span>
             </h1>
             

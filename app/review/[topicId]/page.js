@@ -16,232 +16,10 @@ import remarkBreaks from 'remark-breaks'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
 import 'katex/dist/katex.min.css'
-
-// === SHARED COMPONENTS PORTED FROM LEARN PAGE ===
-
-const cleanCodeContent = (content) => {
-  let cleaned = String(content).replace(/\n$/, '')
-  let prev
-  do {
-    prev = cleaned
-    // Recursively strip any combination of leading/trailing backticks and whitespace
-    cleaned = cleaned.trim().replace(/^`+|`+$/g, '').trim()
-  } while (cleaned !== prev)
-  return cleaned
-}
-
-const CodeBlock = ({ node, inline, className, children, ...props }) => {
-  const match = /language-(\w+)/.exec(className || '')
-  const language = match ? match[1] : ''
-  const codeContent = cleanCodeContent(children)
-  
-  const [copied, setCopied] = useState(false)
-  const isSingleLine = !codeContent.includes('\n') && codeContent.length < 80
-  const isShortSnippet = !codeContent.includes('\n') && codeContent.length < 60
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(codeContent)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  // Force inline style for actual inline code OR short snippets
-  if (inline || isShortSnippet) {
-    return (
-      <code className="bg-primary/10 text-primary px-1.5 py-0.5 rounded-md font-mono text-sm border border-primary/20 break-words whitespace-pre-wrap align-middle" {...props}>
-        {codeContent}
-      </code>
-    )
-  }
-
-  // "Single Line" Block
-  if (isSingleLine) {
-    return (
-      <div className="relative group my-4 inline-block max-w-full align-middle w-full">
-         <div className="absolute -top-3 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-             <button
-            onClick={handleCopy}
-            className="bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded shadow-sm hover:bg-primary/90 transition-colors"
-          >
-            {copied ? 'COPIED' : 'COPY'}
-          </button>
-        </div>
-        <code className={`block ${className} bg-zinc-50 dark:bg-[#0d1117] px-4 py-3 rounded-lg border border-border dark:border-white/10 shadow-sm font-mono text-sm leading-relaxed overflow-x-auto custom-scrollbar whitespace-pre-wrap break-words placeholder:break-all text-zinc-900 dark:text-zinc-100`} {...props}>
-          {codeContent}
-        </code>
-      </div>
-    )
-  }
-
-  return (
-    <div className="relative group my-8 rounded-xl overflow-hidden border border-border dark:border-white/5 shadow-2xl bg-zinc-50 dark:bg-[#0d1117]">
-      <div className="flex items-center justify-between px-4 py-2 bg-zinc-100 dark:bg-white/5 border-b border-border dark:border-white/5">
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-[#ff5f56] shadow-sm" />
-            <div className="w-3 h-3 rounded-full bg-[#ffbd2e] shadow-sm" />
-            <div className="w-3 h-3 rounded-full bg-[#27c93f] shadow-sm" />
-          </div>
-          {language && (
-            <span className="ml-3 text-xs font-mono text-muted-foreground font-medium uppercase tracking-wider">
-              {language}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleCopy}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-zinc-200 dark:hover:bg-white/5"
-            title="Copy code"
-          >
-            {copied ? (
-              <>
-                <Check className="h-3 w-3 text-green-500" />
-                <span className="uppercase text-[10px] font-bold tracking-wider text-green-500">Copied</span>
-              </>
-            ) : (
-              <span className="uppercase text-[10px] font-bold tracking-wider">Copy</span>
-            )}
-          </button>
-        </div>
-      </div>
-      <div className="p-4 overflow-x-auto custom-scrollbar">
-        <code className={`${className} font-mono text-sm leading-relaxed whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100`} {...props}>
-          {codeContent}
-        </code>
-      </div>
-    </div>
-  )
-}
-
-const MarkdownComponents = {
-  h1: ({ node, ...props }) => (
-    <h1 className="text-2xl md:text-3xl font-bold mt-6 md:mt-10 mb-4 md:mb-6 bg-gradient-to-r from-primary to-purple-500 bg-clip-text text-transparent inline-block pb-2 border-b border-white/10 w-full" {...props} />
-  ),
-  h2: ({ node, ...props }) => (
-    <h2 className="text-xl md:text-2xl font-bold mt-6 md:mt-8 mb-3 md:mb-4 text-foreground flex items-center gap-2 group" {...props}>
-      <div className="h-6 w-1 md:h-8 md:w-1 bg-primary rounded-full" />
-      {props.children}
-    </h2>
-  ),
-  h3: ({ node, ...props }) => (
-    <h3 className="text-lg md:text-xl font-semibold mt-5 md:mt-6 mb-2 md:mb-3 text-foreground/90 pl-3 md:pl-4 border-l-2 border-primary/30" {...props} />
-  ),
-  p: ({ node, ...props }) => (
-    <p className="mb-4 md:mb-6 leading-relaxed text-muted-foreground text-base md:text-lg" {...props} />
-  ),
-  ul: ({ node, ...props }) => (
-    <ul className="list-disc list-outside ml-4 md:ml-6 space-y-2 md:space-y-3 my-4 md:my-6 text-muted-foreground marker:text-primary" {...props} />
-  ),
-  ol: ({ node, ...props }) => (
-    <ol className="list-decimal list-outside ml-4 md:ml-6 space-y-2 md:space-y-3 my-4 md:my-6 text-muted-foreground marker:text-primary list-decimal" {...props} />
-  ),
-  li: ({ node, ...props }) => (
-    <li className="[&>p]:!my-0 [&>p]:!inline pl-1 md:pl-0" {...props}>
-      {props.children}
-    </li>
-  ),
-  code: CodeBlock,
-  pre: ({ node, ...props }) => (
-    <pre className="!bg-transparent !p-0 !m-0 !rounded-none !border-none !shadow-none !ring-0 overflow-visible" {...props} />
-  ),
-  blockquote: ({ node, ...props }) => (
-    <blockquote className="my-8 pl-6 border-l-4 border-primary bg-primary/5 py-4 pr-4 rounded-r-xl italic text-lg text-muted-foreground" {...props} />
-  ),
-  table: ({ node, ...props }) => (
-    <div className="overflow-x-auto my-8 rounded-xl border border-white/10 shadow-lg">
-      <table className="w-full text-left border-collapse bg-white/5" {...props} />
-    </div>
-  ),
-  th: ({ node, ...props }) => (
-    <th className="border-b border-white/10 p-4 font-semibold text-foreground bg-white/5" {...props} />
-  ),
-  td: ({ node, ...props }) => (
-    <td className="border-b border-white/5 p-4 text-muted-foreground/90 tabular-nums" {...props} />
-  ),
-  a: ({ node, ...props }) => (
-    <a className="text-primary hover:text-primary/80 transition-colors underline decoration-primary/30 underline-offset-4 hover:decoration-primary" target="_blank" rel="noopener noreferrer" {...props} />
-  ),
-  hr: ({ node, ...props }) => (
-    <hr className="my-10 border-white/10" {...props} />
-  ),
-  img: ({ node, ...props }) => (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img className="rounded-xl border border-white/10 shadow-lg my-8 w-full object-cover" alt={props.alt} {...props} />
-  )
-}
+import CodeBlock, { cleanCodeContent } from '@/components/sub-components/CodeBlock'
+import Flashcard from '@/components/sub-components/Flashcard'
 
 
-const MiniMarkdownComponents = {
-  p: ({ node, ...props }) => <p className="mb-4 text-base md:text-lg text-foreground/90 leading-relaxed last:mb-0" {...props} />,
-  strong: ({ node, ...props }) => <span className="font-bold text-primary" {...props} />,
-  ul: ({ node, ...props }) => <ul className="list-disc list-inside mb-4 text-left space-y-2 text-muted-foreground" {...props} />,
-  ol: ({ node, ...props }) => <ol className="list-decimal list-inside mb-4 text-left space-y-2 text-muted-foreground" {...props} />,
-  li: ({ node, ...props }) => <li className="marker:text-primary" {...props} />,
-  code: ({ node, inline, children, ...props }) => {
-    const codeContent = cleanCodeContent(children)
-    const isShortSnippet = !codeContent.includes('\n') && codeContent.length < 60
-    
-    return (inline || isShortSnippet)
-      ? <code className="bg-primary/10 text-primary px-1 rounded text-sm font-mono break-words whitespace-pre-wrap" {...props}>{codeContent}</code> 
-      : <code className="block bg-muted/50 p-2 rounded-md text-sm font-mono my-2 whitespace-pre-wrap text-left border border-border" {...props}>{codeContent}</code>
-  },
-}
-
-const Flashcard = ({ front, back, isFlipped, onFlip }) => {
-  return (
-    <div 
-      className="relative w-full h-80 md:h-96 cursor-pointer group perspective-1000"
-      onClick={onFlip}
-    >
-      <div className={`relative w-full h-full duration-700 transform-style-3d transition-all ${isFlipped ? 'rotate-y-180' : ''}`}>
-        {/* Front Face */}
-        <div className="absolute inset-0 w-full h-full backface-hidden">
-          <Card className="h-full flex flex-col items-center justify-center p-8 glass-card border-primary/20 hover:border-primary/50 transition-colors shadow-2xl shadow-primary/5">
-            <div className="absolute top-4 left-4 text-xs font-mono text-muted-foreground uppercase tracking-widest opacity-50">
-              Question
-            </div>
-            <CardContent className="text-center p-0">
-               <div className="mb-6 mx-auto w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Sparkles className="w-6 h-6" />
-               </div>
-              <h3 className="text-2xl md:text-3xl font-bold text-foreground leading-tight">
-                {front}
-              </h3>
-              <p className="mt-8 text-sm text-muted-foreground animate-pulse">
-                Click or Press Space to Flip
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Back Face */}
-        <div className="absolute inset-0 w-full h-full backface-hidden rotate-y-180">
-          <Card className="h-full flex flex-col p-8 bg-card border border-primary/30 shadow-2xl shadow-primary/10 relative">
-             <div className="absolute top-4 left-4 text-xs font-mono text-primary uppercase tracking-widest opacity-70 z-10">
-              Answer
-            </div>
-            <CardContent className="text-center p-0 h-full overflow-y-auto flex flex-col justify-center w-full pt-6">
-              <div className="w-full">
-                <ReactMarkdown 
-                    remarkPlugins={[remarkGfm, remarkBreaks, remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                    components={MiniMarkdownComponents}
-                >
-                    {back}
-                </ReactMarkdown>
-              </div>
-            </CardContent>
-             {/* Scroll Indicator Gradient */}
-             <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
-          </Card>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// === END SHARED COMPONENTS ===
 
 const qualityLabels = [
   { value: 0, label: 'Complete Blackout', description: "I don't remember anything" },
@@ -441,12 +219,13 @@ export default function ReviewPage() {
         <div className="max-w-2xl w-full relative z-10">
           <div className="mb-8 flex justify-between items-end">
              <div>
-                <Button variant="ghost" onClick={() => setShowFlashcards(false)} className="hover:bg-white/5 -ml-4 mb-2">
+                <Button variant="ghost" onClick={() => setShowFlashcards(false)} className="hover:bg-white/5 -ml-4 mb-2 md:mb-0">
                     <ArrowLeft className="mr-2 h-5 w-5" />
-                    Back to Review
+                    <span className="inline md:hidden">Back</span>
+                    <span className="hidden md:inline">Back to Review</span>
                 </Button>
-                <div className="flex items-center gap-2">
-                    <h2 className="text-2xl font-bold tracking-tight">Flashcards</h2>
+                <div className="flex flex-col md:flex-row md:items-center gap-2">
+                    <h2 className="text-xl md:text-2xl font-bold tracking-tight">Flashcards</h2>
                     <span className="px-2 py-0.5 rounded-full bg-primary/20 text-primary text-xs font-mono border border-primary/20">
                         {topic.title}
                     </span>
@@ -475,20 +254,20 @@ export default function ReviewPage() {
             onFlip={() => setIsFlipped(!isFlipped)}
           />
 
-          <div className="mt-12 flex justify-between items-center gap-4">
+          <div className="mt-8 md:mt-12 flex flex-col-reverse md:flex-row justify-between items-center gap-4">
             <Button 
                 variant="outline" 
                 size="lg"
                 onClick={handlePrevCard} 
-                className="glass border-white/10 hover:bg-white/5 min-w-[120px]"
+                className="w-full md:w-auto glass border-white/10 hover:bg-white/5 min-w-[120px]"
             >
               Previous
               <span className="ml-2 text-xs text-muted-foreground hidden md:inline-block border border-white/10 px-1.5 rounded bg-black/20">←</span>
             </Button>
 
-            <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-col items-center gap-2 order-first md:order-none mb-4 md:mb-0">
                  <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium opacity-50">
-                    Space to Flip
+                    Tap to Flip
                  </span>
             </div>
 
@@ -496,7 +275,7 @@ export default function ReviewPage() {
                  <Button 
                     size="lg"
                     onClick={() => setShowFlashcards(false)} 
-                    className="bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 min-w-[120px]"
+                    className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 min-w-[120px]"
                  >
                     <Check className="mr-2 h-5 w-5" />
                     Done
@@ -506,7 +285,7 @@ export default function ReviewPage() {
                     variant="outline"
                     size="lg"
                     onClick={handleNextCard} 
-                    className="glass border-white/10 hover:bg-white/5 min-w-[120px]"
+                    className="w-full md:w-auto glass border-white/10 hover:bg-white/5 min-w-[120px]"
                 >
                     Next
                     <span className="ml-2 text-xs text-muted-foreground hidden md:inline-block border border-white/10 px-1.5 rounded bg-black/20">→</span>
@@ -525,19 +304,19 @@ export default function ReviewPage() {
   return (
     <div className="min-h-screen bg-background selection:bg-primary/20 selection:text-primary">
       {/* Header */}
-      <div className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="container mx-auto px-6 py-4">
+      <div className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-40 pt-[env(safe-area-inset-top)]">
+        <div className="container mx-auto px-4 md:px-6 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push(`/subjects/${subject.id}`)} className="hover:bg-white/5">
+            <div className="flex items-center gap-3 md:gap-4">
+              <Button variant="ghost" size="icon" onClick={() => router.push(`/subjects/${subject.id}`)} className="hover:bg-white/5 shrink-0">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div>
-                <div className="text-sm text-muted-foreground">{subject.title}</div>
-                <h1 className="text-2xl font-bold tracking-tight">Review Session</h1>
+              <div className="min-w-0">
+                <div className="text-sm text-muted-foreground truncate">{subject.title}</div>
+                <h1 className="text-lg md:text-2xl font-bold tracking-tight truncate">Review Session</h1>
               </div>
             </div>
-            <div className="text-sm px-3 py-1 bg-white/5 rounded-full border border-white/5 text-muted-foreground">
+            <div className="hidden md:block text-sm px-3 py-1 bg-white/5 rounded-full border border-white/5 text-muted-foreground">
               Last interval: {topic.interval_days} days
             </div>
           </div>
@@ -545,33 +324,33 @@ export default function ReviewPage() {
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-6 py-12 max-w-4xl">
-        <Card className="glass-card mb-8">
-          <CardHeader>
-            <CardTitle className="text-3xl text-center mb-4 tracking-tight">
+      <div className="container mx-auto px-4 md:px-6 py-6 md:py-12 pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        <Card className="glass-card mb-6 md:mb-8">
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-2xl md:text-3xl text-center mb-2 md:mb-4 tracking-tight">
               {topic.title}
             </CardTitle>
-            <p className="text-center text-muted-foreground">
+            <p className="text-center text-muted-foreground text-sm md:text-base">
               Try to recall what you learned about this topic
             </p>
           </CardHeader>
-          <CardContent>
-            <div className="text-center mb-8">
-                <div className="flex gap-4 justify-center mt-4">
-                    <Button variant="outline" onClick={() => setShowContent(!showContent)} className="glass border-white/10 hover:bg-white/5">
+          <CardContent className="p-4 md:p-6">
+            <div className="text-center mb-4 md:mb-8">
+                <div className="flex flex-col sm:flex-row gap-3 md:gap-4 justify-center mt-2 md:mt-4">
+                    <Button variant="outline" onClick={() => setShowContent(!showContent)} className="glass border-white/10 hover:bg-white/5 w-full sm:w-auto h-12 sm:h-auto">
                         {showContent ? 'Hide Content' : 'Show Content to Verify'}
                     </Button>
-                    <Button variant="outline" onClick={handleShowFlashcards} className="glass border-white/10 hover:bg-white/5">
+                    <Button variant="outline" onClick={handleShowFlashcards} className="glass border-white/10 hover:bg-white/5 w-full sm:w-auto h-12 sm:h-auto">
                         <Sparkles className="mr-2 h-4 w-4 text-purple-400" />
                         Revise with Flashcards
                     </Button>
                 </div>
 
               {showContent && (
-                <div className="bg-white/5 p-8 rounded-xl border border-white/5 mt-6 text-left animate-in fade-in slide-in-from-bottom-2">
-                    <div className="mb-8 p-6 bg-white/5 rounded-xl border border-white/5">
-                        <h3 className="text-xl font-semibold mb-3 text-foreground mt-0">Overview</h3>
-                        <p className="text-lg leading-relaxed m-0 text-muted-foreground">{topic.description}</p>
+                <div className="bg-white/5 p-4 md:p-8 rounded-xl border border-white/5 mt-6 text-left animate-in fade-in slide-in-from-bottom-2">
+                    <div className="mb-6 md:mb-8 p-4 md:p-6 bg-white/5 rounded-xl border border-white/5">
+                        <h3 className="text-lg md:text-xl font-semibold mb-3 text-foreground mt-0">Overview</h3>
+                        <p className="text-base md:text-lg leading-relaxed m-0 text-muted-foreground">{topic.description}</p>
                     </div>
 
                   {topic.content && (
@@ -593,22 +372,22 @@ export default function ReviewPage() {
 
         {/* Quality Rating */}
         <Card className="glass-card border-border">
-          <CardHeader>
-            <CardTitle className="text-2xl" >How well did you recall?</CardTitle>
-            <p className="text-muted-foreground">Rate your recall quality (0-5)</p>
+          <CardHeader className="p-4 md:p-6">
+            <CardTitle className="text-xl md:text-2xl" >How well did you recall?</CardTitle>
+            <p className="text-muted-foreground text-sm">Rate your recall quality (0-5)</p>
           </CardHeader>
-          <CardContent className="space-y-8">
+          <CardContent className="space-y-6 md:space-y-8 p-4 md:p-6">
             {/* Quality Slider */}
-            <div className="px-6">
+            <div className="px-2 md:px-6">
               <Slider
                 value={quality}
                 onValueChange={setQuality}
                 max={5}
                 min={0}
                 step={1}
-                className="w-full cursor-pointer"
+                className="w-full cursor-pointer h-10"
               />
-              <div className="flex justify-between mt-4 text-xs font-mono text-muted-foreground">
+              <div className="flex justify-between mt-4 text-[10px] md:text-xs font-mono text-muted-foreground px-1">
                 <span>0</span>
                 <span>1</span>
                 <span>2</span>
@@ -619,14 +398,14 @@ export default function ReviewPage() {
             </div>
 
             {/* Current Selection */}
-            <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 text-center transition-all">
-              <div className="text-5xl font-bold text-primary mb-3">
+            <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 md:p-6 text-center transition-all">
+              <div className="text-4xl md:text-5xl font-bold text-primary mb-2 md:mb-3">
                 {currentQuality.value}
               </div>
-              <div className="text-xl font-semibold mb-2 text-foreground">
+              <div className="text-lg md:text-xl font-semibold mb-1 md:mb-2 text-foreground">
                 {currentQuality.label}
               </div>
-              <div className="text-muted-foreground max-w-sm mx-auto">
+              <div className="text-sm md:text-base text-muted-foreground max-w-sm mx-auto">
                 {currentQuality.description}
               </div>
             </div>
@@ -636,7 +415,7 @@ export default function ReviewPage() {
               size="lg" 
               onClick={handleSubmitReview} 
               disabled={submitting}
-              className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 h-12 text-base font-medium"
+              className="w-full bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 h-12 md:h-12 text-base font-medium"
             >
               {submitting ? (
                 'Submitting...'
