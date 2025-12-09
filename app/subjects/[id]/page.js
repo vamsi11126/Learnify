@@ -1254,7 +1254,7 @@ export default function SubjectPage() {
       {/* Topic Details & Edit Dialog */}
       <Dialog open={isTopicDetailsOpen} onOpenChange={setIsTopicDetailsOpen}>
         <DialogContent 
-          className="bg-card border-border/10 w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto"
+          className="bg-card border-border/10 w-[95vw] sm:max-w-[500px] max-h-[85vh] overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
           onOpenAutoFocus={(e) => e.preventDefault()}
         >
           <DialogHeader>
@@ -1299,19 +1299,19 @@ export default function SubjectPage() {
               </div>
             )}
           </div>
-          <DialogFooter className="flex justify-between sm:justify-between items-center w-full">
+          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-between items-center w-full gap-3 sm:gap-0 mt-6">
             <Button 
               variant="destructive" 
               size="sm"
               onClick={() => handleDeleteTopic(selectedTopic)}
-              className="bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20 border"
+              className="w-full sm:w-auto bg-destructive/10 text-destructive hover:bg-destructive/20 border-destructive/20 border mt-2 sm:mt-0"
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete Topic
             </Button>
-            <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setIsTopicDetailsOpen(false)}>Cancel</Button>
-              <Button onClick={handleUpdateTopic}>Save Changes</Button>
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Button variant="ghost" onClick={() => setIsTopicDetailsOpen(false)} className="w-full sm:w-auto order-1 sm:order-none">Cancel</Button>
+              <Button onClick={handleUpdateTopic} className="w-full sm:w-auto">Save Changes</Button>
             </div>
           </DialogFooter>
         </DialogContent>

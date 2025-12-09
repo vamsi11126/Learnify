@@ -10,7 +10,8 @@ const Toaster = ({
   return (
     <Sonner
       theme={theme}
-      className="toaster group mb-[env(safe-area-inset-bottom)]"
+      position="top-center"
+      className="toaster group mt-[env(safe-area-inset-top)]"
       toastOptions={{
         classNames: {
           toast:
