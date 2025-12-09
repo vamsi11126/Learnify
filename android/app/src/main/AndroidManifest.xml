@@ -20,13 +20,19 @@
             </intent-filter>
 
             <!-- Deep Link Handler for Supabase Auth -->
+            <!-- Custom Scheme Handler (No Verification Needed) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.learnify.app" android:host="auth-callback" />
+            </intent-filter>
+
+            <!-- Verified App Link Handler (HTTPS) -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <!-- Custom Scheme for Mobile -->
-                <data android:scheme="com.learnify.app" android:host="auth-callback" />
-                <!-- Keep HTTPS for backup/verification if needed later -->
                 <data android:scheme="https" android:host="learnify-x.vercel.app" android:pathPrefix="/auth/callback" />
             </intent-filter>
         </activity>
