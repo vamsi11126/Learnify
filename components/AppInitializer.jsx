@@ -1,29 +1,39 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { App } from '@capacitor/app'
 import { usePathname } from 'next/navigation'
 
 export function AppInitializer() {
   const pathname = usePathname()
 
+  const pathnameRef = useRef(pathname)
+
   useEffect(() => {
-    const handleBackButton = async () => {
-        App.addListener('backButton', async (data) => {
-            if (pathname === '/' || pathname === '/dashboard') {
-                await App.exitApp()
-            } else {
-                window.history.back()
-            }
-        })
+    pathnameRef.current = pathname
+  }, [pathname])
+
+  useEffect(() => {
+    let backButtonListener
+
+    const setupListener = async () => {
+      backButtonListener = await App.addListener('backButton', async () => {
+        if (pathnameRef.current === '/' || pathnameRef.current === '/dashboard') {
+          await App.exitApp()
+        } else {
+          window.history.back()
+        }
+      })
     }
     
-    handleBackButton()
+    setupListener()
 
     return () => {
-        App.removeAllListeners()
+      if (backButtonListener) {
+        backButtonListener.remove()
+      }
     }
-  }, [pathname])
+  }, [])
 
   return null
 }
