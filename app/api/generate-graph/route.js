@@ -91,7 +91,7 @@ ${personalizationContext}
 
 CRITICAL RULES:
 1. Output ONLY valid JSON, absolutely NO markdown code blocks, no explanations
-2. Create 12-15 topics to provide COMPREHENSIVE coverage of the subject
+2. Create all the topics to provide COMPREHENSIVE coverage of the subject(All the concepts in the subject must be covered)
 3. Prioritize breadth of topics. Cover all key areas, from basics to advanced.
 4. Each topic needs: slug (unique_id), title, brief description, estimatedMinutes
 5. Dependencies use slugs, not array indices
