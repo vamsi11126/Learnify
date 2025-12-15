@@ -85,7 +85,11 @@ export async function POST(request) {
     2. Structure: Use H2 (##) for main sections and H3 (###) for subsections. Use bullet points for lists.
     3. Real Life Example: Provide a concrete, detailed, and relatable real-world analogy or example.
     4. Code/Math/Chemistry: Use Markdown code blocks (\`\`\`) for computer code. Use LaTeX ($ or $$) for ALL mathematical formulas and chemical equations (e.g., $E=mc^2$, $\\text{H}_2\\text{O}$). Do NOT use code blocks for math or chemistry.
-    5. Visuals: If a concept is complex and needs visualization, write a tag like this on a new line: [Generate Image: detailed description of the image]. Do this for the 2-3 most important concepts.
+    5. Visuals: If a concept is complex and needs visualization, write a tag like this on a new line: [Generate Image: detailed prompt]. Do this for the 2-3 most important concepts.
+       - **CRITICAL**: The text inside [Generate Image: ...] is sent directly to an image generator. It MUST be a standalone, highly detailed visual description.
+       - **Style**: Always specify a high-quality style, e.g., "photorealistic, 8k, highly detailed, cinematic lighting, educational poster style".
+       - **Text Handling**: If the image must contain text (like a label or diagram title), explicit specify it like: 'text "Concept Name" written on the board'. Keep text very simple. If no specific text is needed, do not mention text to avoid garbage characters.
+       - Example: [Generate Image: A photorealistic cross-section of a plant cell showing the nucleus and mitochondria, high quality, educational, 4k, text "Plant Cell" clearly written at the bottom]
     6. Completeness: Do not refer to external sources. Explain it ALL here.
     7. Format: Return ONLY the content in Markdown format. Do not wrap in JSON.
     

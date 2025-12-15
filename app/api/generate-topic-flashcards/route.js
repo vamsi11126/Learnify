@@ -42,7 +42,7 @@ export async function POST(request) {
 
     const userApiKey = userData?.gemini_api_key
 
-    const flashcardPrompt = `You are an expert tutor. Create 5 to 7 concise flashcards for the topic: "${topicTitle}".
+    const flashcardPrompt = `You are an expert tutor. Create 7 to 9 concise flashcards for the topic: "${topicTitle}".
     
     Context Description: ${topicDescription}
     Detailed Content (Reference): ${content ? content.slice(0, 3000) : 'Not provided'}
