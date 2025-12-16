@@ -147,11 +147,26 @@ const sanitizeMermaidCode = (code) => {
 const DiagramLightbox = ({ svg, onClose, isDarkMode, title }) => {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  
+  // Use refs for mutable values during gestures to avoid stalemate closures
+  const isDragging = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const initialDistance = useRef(null)
+  const initialScale = useRef(1)
+  const lastScale = useRef(1)
+  const lastPosition = useRef({ x: 0, y: 0 })
 
   const minScale = 0.5
   const maxScale = 4
+
+  // Sync refs with state
+  useEffect(() => {
+    lastScale.current = scale
+  }, [scale])
+
+  useEffect(() => {
+    lastPosition.current = position
+  }, [position])
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -181,38 +196,118 @@ const DiagramLightbox = ({ svg, onClose, isDarkMode, title }) => {
     }
   }, [onClose])
 
-  const zoomIn = () => setScale(prev => Math.min(prev + 0.5, maxScale))
-  const zoomOut = () => setScale(prev => Math.max(prev - 0.5, minScale))
-  const resetZoom = () => { setScale(1); setPosition({ x: 0, y: 0 }) }
+  const zoomIn = useCallback(() => {
+    const newScale = Math.min(lastScale.current + 0.5, maxScale)
+    setScale(newScale)
+  }, [])
 
-  // Handle wheel zoom (event already prevented by document listener)
-  const handleWheel = (e) => {
-    const delta = e.deltaY > 0 ? -0.2 : 0.2
-    setScale(prev => Math.min(Math.max(prev + delta, minScale), maxScale))
-  }
+  const zoomOut = useCallback(() => {
+    const newScale = Math.max(lastScale.current - 0.5, minScale)
+    setScale(newScale)
+  }, [])
+
+  const resetZoom = useCallback(() => {
+    setScale(1)
+    setPosition({ x: 0, y: 0 })
+    initialDistance.current = null
+  }, [])
+
+  // Handle wheel zoom
+  const handleWheel = useCallback((e) => {
+    if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.01;
+        const newScale = Math.min(Math.max(lastScale.current + delta, minScale), maxScale)
+        setScale(newScale)
+    } else {
+        const delta = e.deltaY > 0 ? -0.2 : 0.2
+        const newScale = Math.min(Math.max(lastScale.current + delta, minScale), maxScale)
+        setScale(newScale)
+    }
+  }, [])
 
   const handleMouseDown = (e) => {
-    if (scale > 1) {
-      setIsDragging(true)
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
+    if (lastScale.current > 1) {
+      isDragging.current = true
+      dragStart.current = { x: e.clientX - lastPosition.current.x, y: e.clientY - lastPosition.current.y }
     }
   }
 
   const handleMouseMove = (e) => {
-    if (isDragging && scale > 1) {
-      setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y })
+    if (isDragging.current && lastScale.current > 1) {
+      const newX = e.clientX - dragStart.current.x
+      const newY = e.clientY - dragStart.current.y
+      setPosition({ x: newX, y: newY })
     }
   }
 
-  const handleMouseUp = () => setIsDragging(false)
+  const handleMouseUp = () => {
+    isDragging.current = false
+  }
+
+   // Calculate distance between two touch points
+   const getDistance = (touches) => {
+    return Math.hypot(
+      touches[0].clientX - touches[1].clientX,
+      touches[0].clientY - touches[1].clientY
+    )
+  }
+
+  // Handle touch events
+  const handleTouchStart = (e) => {
+    if (e.touches.length === 2) {
+      // Pinch started
+      const distance = getDistance(e.touches)
+      initialDistance.current = distance
+      initialScale.current = lastScale.current
+      isDragging.current = false
+    } else if (e.touches.length === 1 && lastScale.current > 1) {
+      // Pan started
+      isDragging.current = true
+      dragStart.current = { 
+        x: e.touches[0].clientX - lastPosition.current.x, 
+        y: e.touches[0].clientY - lastPosition.current.y 
+      }
+    }
+  }
+
+  const handleTouchMove = (e) => {
+    if (e.touches.length === 2 && initialDistance.current !== null) {
+      // Pinching
+      const distance = getDistance(e.touches)
+      const ratio = distance / initialDistance.current
+      const newScale = Math.min(Math.max(initialScale.current * ratio, minScale), maxScale)
+      setScale(newScale)
+    } else if (isDragging.current && lastScale.current > 1 && e.touches.length === 1) {
+      // Panning
+      const newX = e.touches[0].clientX - dragStart.current.x
+      const newY = e.touches[0].clientY - dragStart.current.y
+      setPosition({ x: newX, y: newY })
+    }
+  }
+
+  const handleTouchEnd = (e) => {
+    if (e.touches.length < 2) {
+      initialDistance.current = null
+    }
+    if (e.touches.length === 0) {
+      isDragging.current = false
+    }
+  }
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex items-center justify-center"
+      className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex items-center justify-center touch-none"
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onWheel={handleWheel}
     >
       {/* Close Button - Solid background for visibility */}
       <button
@@ -245,8 +340,6 @@ const DiagramLightbox = ({ svg, onClose, isDarkMode, title }) => {
       {/* Diagram Container - Theme-aware background */}
       <div
         className="relative w-full h-full flex items-center justify-center overflow-hidden p-8"
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
       >
         <div
           className={`rounded-xl p-6 shadow-2xl [&_svg]:max-w-full [&_svg]:h-auto ${
@@ -256,11 +349,14 @@ const DiagramLightbox = ({ svg, onClose, isDarkMode, title }) => {
           }`}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
-            transition: isDragging ? 'none' : 'transform 0.2s ease-out'
+            cursor: scale > 1 ? (isDragging.current ? 'grabbing' : 'grab') : 'zoom-in',
+            transition: isDragging.current || (initialDistance.current !== null) ? 'none' : 'transform 0.2s ease-out'
           }}
           dangerouslySetInnerHTML={{ __html: svg }}
-          onClick={() => scale === 1 && zoomIn()}
+          onClick={(e) => {
+              e.stopPropagation();
+              if (scale === 1) zoomIn();
+          }}
         />
       </div>
 
