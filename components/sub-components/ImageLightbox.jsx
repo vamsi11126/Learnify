@@ -1,21 +1,32 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 
 // Fullscreen Image Lightbox Component with Zoom
 export default function ImageLightbox({ src, alt, onClose }) {
   const [scale, setScale] = useState(1)
   const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isDragging, setIsDragging] = useState(false)
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   
-  // Pinch-to-zoom state
-  const [initialDistance, setInitialDistance] = useState(null)
-  const [initialScale, setInitialScale] = useState(1)
+  // Use refs for mutable values during gestures to avoid stale closures in event handlers
+  const isDragging = useRef(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const initialDistance = useRef(null)
+  const initialScale = useRef(1)
+  const lastScale = useRef(1) // Keep track of scale for synchronous updates
+  const lastPosition = useRef({ x: 0, y: 0 }) // Keep track of position
 
   const minScale = 0.5
   const maxScale = 4
+
+  // Sync refs with state when state changes programmatically (e.g. buttons)
+  useEffect(() => {
+    lastScale.current = scale
+  }, [scale])
+
+  useEffect(() => {
+    lastPosition.current = position
+  }, [position])
 
   // Handle keyboard events and prevent scroll
   useEffect(() => {
@@ -33,6 +44,7 @@ export default function ImageLightbox({ src, alt, onClose }) {
     }
     
     document.addEventListener('keydown', handleKeyDown)
+    // We add non-passive listeners to document to be absolutely sure we stop scrolling
     document.addEventListener('wheel', preventScroll, { passive: false })
     document.addEventListener('touchmove', preventScroll, { passive: false })
     
@@ -48,17 +60,19 @@ export default function ImageLightbox({ src, alt, onClose }) {
   }, [onClose])
 
   const zoomIn = useCallback(() => {
-    setScale(prev => Math.min(prev + 0.5, maxScale))
+    const newScale = Math.min(lastScale.current + 0.5, maxScale)
+    setScale(newScale)
   }, [])
 
   const zoomOut = useCallback(() => {
-    setScale(prev => Math.max(prev - 0.5, minScale))
+    const newScale = Math.max(lastScale.current - 0.5, minScale)
+    setScale(newScale)
   }, [])
 
   const resetZoom = useCallback(() => {
     setScale(1)
     setPosition({ x: 0, y: 0 })
-    setInitialDistance(null)
+    initialDistance.current = null
   }, [])
 
   // Handle wheel zoom (event already prevented by document listener)
@@ -67,32 +81,33 @@ export default function ImageLightbox({ src, alt, onClose }) {
     if (e.ctrlKey) {
         e.preventDefault();
         const delta = -e.deltaY * 0.01;
-        setScale(prev => Math.min(Math.max(prev + delta, minScale), maxScale));
+        const newScale = Math.min(Math.max(lastScale.current + delta, minScale), maxScale)
+        setScale(newScale)
     } else {
         const delta = e.deltaY > 0 ? -0.2 : 0.2
-        setScale(prev => Math.min(Math.max(prev + delta, minScale), maxScale))
+        const newScale = Math.min(Math.max(lastScale.current + delta, minScale), maxScale)
+        setScale(newScale)
     }
   }, [])
 
   // Handle drag to pan
   const handleMouseDown = (e) => {
-    if (scale > 1) {
-      setIsDragging(true)
-      setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y })
+    if (lastScale.current > 1) {
+      isDragging.current = true
+      dragStart.current = { x: e.clientX - lastPosition.current.x, y: e.clientY - lastPosition.current.y }
     }
   }
 
   const handleMouseMove = (e) => {
-    if (isDragging && scale > 1) {
-      setPosition({
-        x: e.clientX - dragStart.x,
-        y: e.clientY - dragStart.y
-      })
+    if (isDragging.current && lastScale.current > 1) {
+        const newX = e.clientX - dragStart.current.x
+        const newY = e.clientY - dragStart.current.y
+        setPosition({ x: newX, y: newY })
     }
   }
 
   const handleMouseUp = () => {
-    setIsDragging(false)
+    isDragging.current = false
   }
 
   // Calculate distance between two touch points
@@ -108,56 +123,58 @@ export default function ImageLightbox({ src, alt, onClose }) {
     if (e.touches.length === 2) {
       // Pinch started
       const distance = getDistance(e.touches)
-      setInitialDistance(distance)
-      setInitialScale(scale)
-      setIsDragging(false) // Disable dragging during pinch
-    } else if (e.touches.length === 1 && scale > 1) {
+      initialDistance.current = distance
+      initialScale.current = lastScale.current
+      isDragging.current = false // Disable dragging during pinch
+    } else if (e.touches.length === 1 && lastScale.current > 1) {
       // Pan started
-      setIsDragging(true)
-      setDragStart({ 
-        x: e.touches[0].clientX - position.x, 
-        y: e.touches[0].clientY - position.y 
-      })
+      isDragging.current = true
+      dragStart.current = { 
+        x: e.touches[0].clientX - lastPosition.current.x, 
+        y: e.touches[0].clientY - lastPosition.current.y 
+      }
     }
   }
 
   const handleTouchMove = (e) => {
-    if (e.touches.length === 2 && initialDistance !== null) {
+    if (e.touches.length === 2 && initialDistance.current !== null) {
       // Pinching
       const distance = getDistance(e.touches)
-      const ratio = distance / initialDistance
-      const newScale = Math.min(Math.max(initialScale * ratio, minScale), maxScale)
+      const ratio = distance / initialDistance.current
+      const newScale = Math.min(Math.max(initialScale.current * ratio, minScale), maxScale)
       setScale(newScale)
-    } else if (isDragging && scale > 1 && e.touches.length === 1) {
+    } else if (isDragging.current && lastScale.current > 1 && e.touches.length === 1) {
       // Panning
-      setPosition({
-        x: e.touches[0].clientX - dragStart.x,
-        y: e.touches[0].clientY - dragStart.y
-      })
+      const newX = e.touches[0].clientX - dragStart.current.x
+      const newY = e.touches[0].clientY - dragStart.current.y
+      setPosition({ x: newX, y: newY })
     }
   }
 
   const handleTouchEnd = (e) => {
     // If fewer than 2 touches, reset pinch state
     if (e.touches.length < 2) {
-      setInitialDistance(null)
+      initialDistance.current = null
     }
     // If no touches left, stop dragging
     if (e.touches.length === 0) {
-      setIsDragging(false)
+      isDragging.current = false
     }
   }
 
   return (
     <div 
-      className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex items-center justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]"
+      className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-sm flex items-center justify-center pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)] touch-none"
       onClick={(e) => e.target === e.currentTarget && onClose()}
+      onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
+      onWheel={handleWheel}
     >
       {/* Close Button - Solid background for visibility */}
       <button
@@ -209,9 +226,6 @@ export default function ImageLightbox({ src, alt, onClose }) {
       {/* Image Container */}
       <div
         className="relative w-full h-full flex items-center justify-center overflow-hidden"
-        onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onTouchStart={handleTouchStart}
       >
         <img
           src={src}
@@ -219,11 +233,14 @@ export default function ImageLightbox({ src, alt, onClose }) {
           className="max-w-[90vw] max-h-[85vh] object-contain select-none"
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            cursor: scale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
-            transition: isDragging || (initialDistance !== null) ? 'none' : 'transform 0.2s ease-out'
+            cursor: scale > 1 ? (isDragging.current ? 'grabbing' : 'grab') : 'zoom-in',
+            transition: isDragging.current || (initialDistance.current !== null) ? 'none' : 'transform 0.2s ease-out'
           }}
           draggable={false}
-          onClick={() => scale === 1 && zoomIn()}
+          onClick={(e) => {
+             e.stopPropagation(); // prevent closing when clicking image
+             if(scale === 1) zoomIn();
+          }}
         />
       </div>
 
