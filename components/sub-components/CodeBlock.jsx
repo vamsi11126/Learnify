@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useId } from 'react'
+import { useState, useEffect, useRef, useId, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { Check, X, ZoomIn, ZoomOut, RotateCcw } from 'lucide-react'
 

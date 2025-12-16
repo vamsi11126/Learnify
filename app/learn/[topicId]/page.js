@@ -20,6 +20,7 @@ import { ThemeToggle } from '@/components/sub-components/theme-toggle'
 
 import CodeBlock, { cleanCodeContent } from '@/components/sub-components/CodeBlock'
 import Flashcard from '@/components/sub-components/Flashcard'
+import DoubtChat from '@/components/sub-components/DoubtChat'
 
 
 import MarkdownComponents from '@/components/sub-components/MarkdownComponents'
@@ -502,7 +503,15 @@ export default function LearnPage() {
             Mark as Learned
           </Button>
         </div>
+        </div>
+
+        {/* Doubt Chat Bot - Only visible if content is generated */}
+        <DoubtChat 
+          topicId={topicId}
+          topicTitle={topic.title}
+          subjectTitle={subject.title}
+          contentStatus={!!(topic.content && topic.content !== topic.description && topic.content.length > 50)}
+        />
       </div>
-    </div>
   )
 }
