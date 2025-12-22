@@ -1,16 +1,16 @@
-import { Inter } from 'next/font/google'
-import './globals.css'
-import { Analytics } from '@vercel/analytics/next'
-import { SpeedInsights } from '@vercel/speed-insights/next'
-import { Toaster } from '@/components/ui/sonner'
-import { ThemeProvider } from '@/components/theme-provider'
-import { DownloadBanner } from '@/components/download-banner'
-import { AppInitializer } from '@/components/AppInitializer'
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Toaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "@/components/theme-provider";
+import { DownloadBanner } from "@/components/download-banner";
+import { AppInitializer } from "@/components/AppInitializer";
 
-const inter = Inter({ 
-  subsets: ['latin'],
-  variable: '--font-inter',
-})
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
 
 export const viewport = {
   themeColor: "#ffffff",
@@ -21,8 +21,9 @@ export const viewport = {
 };
 
 export const metadata = {
-  title: 'Learnify',
-  description: 'AI-powered spaced repetition learning platform with knowledge graphs',
+  title: "Learnify",
+  description:
+    "AI-powered spaced repetition learning platform with knowledge graphs",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -37,27 +38,32 @@ export const metadata = {
     shortcut: "/icons/icon-192x192.png",
     apple: "/icons/icon-192x192.png",
   },
-}
+  verification: {
+    google: "eFPCwZpTjTsnQmsX4k0-IsfGMnWWk9l83dV6Veg0QRQ",
+  },
+};
 
 export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased bg-background text-foreground`}>
+      <body
+        className={`${inter.variable} font-sans antialiased bg-background text-foreground`}
+      >
         <ThemeProvider
-            attribute="class"
-            defaultTheme="dark"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AppInitializer />
-            {children}
-            <DownloadBanner />
+          attribute="class"
+          defaultTheme="dark"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AppInitializer />
+          {children}
+          <DownloadBanner />
 
-            <Toaster />
-            <Analytics />
-            <SpeedInsights />
+          <Toaster />
+          <Analytics />
+          <SpeedInsights />
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }
