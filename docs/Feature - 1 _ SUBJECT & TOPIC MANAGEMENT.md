@@ -28,13 +28,13 @@ Students don’t know what topics exist inside a subject, and they don’t know 
 
 Learnify solves this by letting users
 
-1. Create subjects
+1. Create subjects.
 
-2. Auto-generate topics via AI or add manually
+2. Auto-generate topics via AI or add manually.
 
-3. Manage them from a central interface
+3. Manage them from a central interface.
 
-4. Connect them into a dependency graph
+4. Connect them into a dependency graph.
 
 This is the **input layer** for the entire learning engine.
 
