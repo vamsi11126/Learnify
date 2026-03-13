@@ -23,7 +23,7 @@ export function GlobalNavigation({ children }) {
     return (
       <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 selection:text-primary">
         <Navbar />
-        <main className="flex-1 w-full animate-in fade-in duration-500">
+        <main className="flex-1 w-full animate-in fade-in duration-500 pt-[calc(7rem+env(safe-area-inset-top))] px-4 md:px-8 pb-8">
           {children}
         </main>
       </div>
@@ -47,7 +47,7 @@ export function GlobalNavigation({ children }) {
           ml-0`}
       >
         <Header setSidebarOpen={setSidebarOpen} />
-        <div className="pt-[calc(5rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] px-4 md:pt-[calc(4rem+env(safe-area-inset-top))] md:p-8 max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
+        <div className="pt-[calc(6rem+env(safe-area-inset-top))] pb-[env(safe-area-inset-bottom)] px-4 md:pt-[calc(6rem+env(safe-area-inset-top))] md:p-8 max-w-7xl mx-auto w-full space-y-8 animate-in fade-in duration-500">
             {children}
         </div>
       </main>
