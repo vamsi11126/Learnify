@@ -142,7 +142,7 @@ export function ContributeResourceModal({ open, onOpenChange, userId }) {
             <div className="flex items-start gap-2 p-3 bg-primary/5 rounded-lg border border-primary/10">
               <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
               <p className="text-[11px] leading-snug text-muted-foreground">
-                <span className="text-primary font-bold">Important:</span> Set link sharing to <span className="text-foreground font-semibold">"Anyone with the link can view"</span> in Google Drive before sharing.
+                <span className="text-primary font-bold">Important:</span> Set link sharing to <span className="text-foreground font-semibold">&quot;Anyone with the link can view&quot;</span> in Google Drive before sharing.
               </p>
             </div>
           </div>
