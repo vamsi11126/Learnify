@@ -196,7 +196,7 @@ export default function SettingsPage() {
                         </div>
                         <div className="flex gap-3">
                         <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-mono text-xs font-bold">2</div>
-                        <p>Click <span className="text-foreground font-medium">"Create API key"</span>.</p>
+                        <p>Click <span className="text-foreground font-medium">&quot;Create API key&quot;</span>.</p>
                         </div>
                     </div>
                   </div>

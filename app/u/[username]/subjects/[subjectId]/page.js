@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cloneSubject } from '@/lib/actions'
 import { ThemeToggle } from '@/components/sub-components/theme-toggle'
+import HelpfulFeedback from '@/components/community/HelpfulFeedback'
 
 export default function PublicSubjectPage() {
   const router = useRouter()
@@ -288,6 +289,7 @@ export default function PublicSubjectPage() {
                   <div className="lg:hidden space-y-6">
                     <MetricsCard />
                     <CloneCard />
+                    <HelpfulFeedback courseId={subjectId} />
                 </div>
                 
                 {/* Syllabus Preview */}
@@ -333,6 +335,7 @@ export default function PublicSubjectPage() {
               <div className="hidden lg:col-span-1 lg:block space-y-6">
                  <MetricsCard />
                  <CloneCard />
+                 <HelpfulFeedback courseId={subjectId} />
               </div>
             </div>
             );

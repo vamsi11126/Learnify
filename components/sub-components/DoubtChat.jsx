@@ -149,8 +149,8 @@ export default function DoubtChat({ topicId, topicTitle, subjectTitle, contentSt
                         {messages.length === 0 && (
                             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground p-4">
                                 <Bot className="h-12 w-12 mb-2 opacity-20" />
-                                <p className="text-sm">Hi! I've studied this topic.</p>
-                                <p className="text-xs mt-1 opacity-70">Ask me anything about "{topicTitle}"!</p>
+                                <p className="text-sm">Hi! I&apos;ve studied this topic.</p>
+                                <p className="text-xs mt-1 opacity-70">Ask me anything about &quot;{topicTitle}&quot;!</p>
                             </div>
                         )}
                         

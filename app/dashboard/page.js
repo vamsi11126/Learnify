@@ -338,14 +338,14 @@ export default function Dashboard() {
                   {creationMode === 'ai' && (
                      <div className="rounded-md bg-primary/10 p-3 text-sm text-primary flex gap-2">
                         <Sparkles className="h-4 w-4 shrink-0 mt-0.5" />
-                        <p>We'll generate a personalized curriculum graph for you based on your profile and this description.</p>
+                        <p>We&apos;ll generate a personalized curriculum graph for you based on your profile and this description.</p>
                      </div>
                   )}
 
                   {creationMode === 'manual' && (
                      <div className="rounded-md bg-muted/50 p-3 text-sm text-muted-foreground flex gap-2">
                         <PenTool className="h-4 w-4 shrink-0 mt-0.5" />
-                        <p>You'll start with an empty subject. You can add topics manually or use AI to generate specific ones later.</p>
+                        <p>You&apos;ll start with an empty subject. You can add topics manually or use AI to generate specific ones later.</p>
                      </div>
                   )}
                 </div>
@@ -563,7 +563,7 @@ export default function Dashboard() {
               <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
               <AlertDialogDescription>
                 This action cannot be undone. This will permanently delete the subject
-                <span className="font-semibold text-foreground"> "{selectedSubject?.title}" </span>
+                <span className="font-semibold text-foreground"> &quot;{selectedSubject?.title}&quot; </span>
                 and all of its topics and content.
               </AlertDialogDescription>
             </AlertDialogHeader>
