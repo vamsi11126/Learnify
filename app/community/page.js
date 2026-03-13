@@ -6,7 +6,7 @@ import { getPublicSubjects, cloneSubject } from '@/lib/actions'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Globe, BookOpen, Copy, Users, Search, Sparkles, GraduationCap } from 'lucide-react'
+import { Loader2, Globe, BookOpen, Copy, Users, Search, Sparkles, GraduationCap, ArrowUp, ArrowDown } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -135,7 +135,7 @@ export default function CommunityPage() {
             </div>
             <h3 className="text-xl font-semibold mb-2">No subjects found</h3>
             <p className="text-muted-foreground max-w-sm text-center">
-                We couldn't find any public subjects matching "{searchQuery}". Try a different keyword.
+                We couldn&apos;t find any public subjects matching &quot;{searchQuery}&quot;. Try a different keyword.
             </p>
             <Button 
                 variant="link" 
@@ -203,6 +203,16 @@ export default function CommunityPage() {
                                     <span>{subject.profiles.education_level}</span>
                                 </div>
                             )}
+                            <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-1" title="Upvotes">
+                                    <ArrowUp className="h-3.5 w-3.5 text-emerald-500" />
+                                    <span>{subject.upvotes || 0}</span>
+                                </div>
+                                <div className="flex items-center gap-1" title="Downvotes">
+                                    <ArrowDown className="h-3.5 w-3.5 text-rose-500" />
+                                    <span>{subject.downvotes || 0}</span>
+                                </div>
+                            </div>
                         </div>
                         
                         <Button 
